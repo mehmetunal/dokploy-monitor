@@ -1,6 +1,7 @@
 using DokployMonitor.Core.Dashboard;
 using DokployMonitor.Core.Deployments;
 using DokployMonitor.Infrastructure.Persistence;
+using DokployMonitor.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -96,45 +97,148 @@ public sealed class DashboardQueryService(
             .Take(take)
             .ToListAsync(ct);
 
-    /// <summary>En cok tekrar eden hatalar (hata analizi ekrani).</summary>
-    public Task<List<ErrorSignature>> GetTopErrorsAsync(int take, CancellationToken ct = default) =>
-        db.ErrorSignatures
-            .OrderByDescending(s => s.OccurrenceCount)
-            .ThenByDescending(s => s.LastSeenAt)
+    /// <summary>Ayni projedeki diger servislerin son deploymentlari (detay ekrani).</summary>
+    public Task<List<TrackedDeployment>> GetProjectHistoryAsync(
+        string projectName,
+        string? excludeServiceId,
+        int take,
+        CancellationToken ct = default) =>
+        db.Deployments
+            .Where(d => d.ProjectName == projectName)
+            .Where(d => excludeServiceId == null || d.ServiceId != excludeServiceId)
+            .OrderByDescending(d => d.CreatedAt)
+            .Take(take)
+            .ToListAsync(ct);
+
+    /// <summary>
+    /// En cok tekrar eden hatalar. Adet ve son gorulme, filtrelenmis kume uzerinden
+    /// hesaplanir; hata metni ErrorSignature tablosundan alinir.
+    /// </summary>
+    public async Task<List<ErrorGroupRow>> GetTopErrorsAsync(
+        ErrorFilter filter,
+        int take,
+        CancellationToken ct = default)
+    {
+        var failures = FailedDeployments(filter);
+
+        var counts = await failures
+            .GroupBy(d => d.ErrorSignatureHash!)
+            .Select(group => new { Hash = group.Key, Count = group.Count() })
+            .OrderByDescending(row => row.Count)
+            .Take(take)
+            .ToListAsync(ct);
+
+        if (counts.Count == 0)
+        {
+            return [];
+        }
+
+        var hashes = counts.ConvertAll(row => row.Hash);
+
+        var messages = await db.ErrorSignatures
+            .Where(signature => hashes.Contains(signature.Hash))
+            .ToDictionaryAsync(signature => signature.Hash, signature => signature.NormalizedMessage, ct);
+
+        var rows = new List<ErrorGroupRow>(counts.Count);
+
+        foreach (var count in counts)
+        {
+            // Hash basina tek kayit: sayi `take` ile sinirli (varsayilan 20), sorgular kucuk.
+            var latest = await failures
+                .Where(d => d.ErrorSignatureHash == count.Hash)
+                .OrderByDescending(d => d.CreatedAt)
+                .FirstOrDefaultAsync(ct);
+
+            rows.Add(new ErrorGroupRow
+            {
+                Hash = count.Hash,
+                Count = count.Count,
+                NormalizedMessage = messages.GetValueOrDefault(count.Hash)
+                    ?? DeploymentRow.Summarize(latest?.ErrorMessage)
+                    ?? "(mesaj kaydedilmemis)",
+                LastSeenAt = latest?.CreatedAt ?? DateTimeOffset.MinValue,
+                LastServiceName = latest?.DisplayName,
+                LastProjectName = latest?.ProjectName,
+                LatestDeploymentId = latest?.DeploymentId,
+                LatestHasLog = latest is not null
+                    && (!string.IsNullOrWhiteSpace(latest.LogPath)
+                        || !string.IsNullOrWhiteSpace(latest.ArchivedLogPath)),
+            });
+        }
+
+        return rows;
+    }
+
+    /// <summary>Filtreye uyan son basarisiz deploymentlar (hata analizi ekrani).</summary>
+    public Task<List<TrackedDeployment>> GetRecentFailuresAsync(
+        ErrorFilter filter,
+        int take,
+        CancellationToken ct = default) =>
+        FailedDeployments(filter, requireSignature: false)
+            .OrderByDescending(d => d.CreatedAt)
             .Take(take)
             .ToListAsync(ct);
 
     /// <summary>Filtreli deployment listesi (gecmis ekrani).</summary>
-    public async Task<List<TrackedDeployment>> SearchAsync(
-        string? projectName,
-        string? status,
-        string? query,
-        int take,
-        CancellationToken ct = default)
+    public async Task<List<TrackedDeployment>> SearchAsync(DeploymentFilter filter, CancellationToken ct = default)
     {
         var q = db.Deployments.AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(projectName))
+        if (!string.IsNullOrWhiteSpace(filter.Project))
         {
-            q = q.Where(d => d.ProjectName == projectName);
+            q = q.Where(d => d.ProjectName == filter.Project);
         }
 
-        if (!string.IsNullOrWhiteSpace(status)
-            && Enum.TryParse<DeploymentStatus>(status, ignoreCase: true, out var parsed))
+        if (!string.IsNullOrWhiteSpace(filter.Status)
+            && Enum.TryParse<DeploymentStatus>(filter.Status, ignoreCase: true, out var parsed))
         {
             q = q.Where(d => d.Status == parsed);
         }
 
-        if (!string.IsNullOrWhiteSpace(query))
+        if (filter.FromInstant is { } from)
         {
-            var term = query.Trim();
+            q = q.Where(d => d.CreatedAt >= from);
+        }
+
+        if (filter.ToInstant is { } to)
+        {
+            q = q.Where(d => d.CreatedAt <= to);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Q))
+        {
+            var term = filter.Q.Trim();
             q = q.Where(d =>
                 (d.ServiceName != null && EF.Functions.Like(d.ServiceName, $"%{term}%"))
                 || (d.ProjectName != null && EF.Functions.Like(d.ProjectName, $"%{term}%"))
                 || (d.ErrorMessage != null && EF.Functions.Like(d.ErrorMessage, $"%{term}%")));
         }
 
-        return await q.OrderByDescending(d => d.CreatedAt).Take(take).ToListAsync(ct);
+        return await q.OrderByDescending(d => d.CreatedAt).Take(filter.Take).ToListAsync(ct);
+    }
+
+    /// <summary>Hata analizi ekranlarinin ortak temel sorgusu.</summary>
+    private IQueryable<TrackedDeployment> FailedDeployments(ErrorFilter filter, bool requireSignature = true)
+    {
+        var q = db.Deployments
+            .Where(d => d.Status == DeploymentStatus.Error || d.Status == DeploymentStatus.Cancelled);
+
+        if (requireSignature)
+        {
+            q = q.Where(d => d.ErrorSignatureHash != null);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Project))
+        {
+            q = q.Where(d => d.ProjectName == filter.Project);
+        }
+
+        if (filter.Since is { } since)
+        {
+            q = q.Where(d => d.CreatedAt >= since);
+        }
+
+        return q;
     }
 
     /// <summary>Filtre acilir kutulari icin proje adlari.</summary>

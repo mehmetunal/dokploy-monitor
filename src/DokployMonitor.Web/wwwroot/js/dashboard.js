@@ -4,13 +4,96 @@
     const dm = window.dm;
     let pollTimer = null;
 
-    function render(snapshot) {
-        if (!snapshot) return;
+    // Son gelen snapshot: filtre degistiginde sunucuyu beklemeden yeniden cizmek icin.
+    let snapshot = null;
+
+    const filterStorageKey = 'dm.dashboard.filter';
+    const filter = loadFilter();
+
+    function loadFilter() {
+        try {
+            return Object.assign(
+                { project: '', text: '', onlyFailed: false },
+                JSON.parse(localStorage.getItem(filterStorageKey) || '{}'));
+        } catch (e) {
+            return { project: '', text: '', onlyFailed: false };
+        }
+    }
+
+    function saveFilter() {
+        try {
+            localStorage.setItem(filterStorageKey, JSON.stringify(filter));
+        } catch (e) {
+            // Ozel modda localStorage yazilamaz; filtre sadece bu sekmede yasar.
+        }
+    }
+
+    function matches(row) {
+        if (filter.project && row.projectName !== filter.project) return false;
+
+        if (filter.onlyFailed && row.status !== 'error' && row.status !== 'cancelled') return false;
+
+        if (filter.text) {
+            const needle = filter.text.toLowerCase();
+            const haystack = [row.serviceName, row.projectName, row.environmentName, row.errorSummary, row.serviceType]
+                .filter(Boolean).join(' ').toLowerCase();
+            if (!haystack.includes(needle)) return false;
+        }
+
+        return true;
+    }
+
+    function render(current) {
+        if (!current) return;
+        snapshot = current;
+
         renderStats(snapshot.stats);
+        syncProjectOptions();
         renderActive(snapshot.active);
         renderQueue(snapshot.queue, snapshot.queueUnavailableReason);
         renderRecent(snapshot.recent);
         renderNotifications(snapshot.notifications);
+        renderFilterInfo();
+    }
+
+    /// Proje listesi snapshot'tan turetilir; secili deger korunur.
+    function syncProjectOptions() {
+        const select = document.getElementById('filter-project');
+        if (!select) return;
+
+        const projects = [...new Set(
+            [].concat(snapshot.active || [], snapshot.recent || [])
+                .map(function (r) { return r.projectName; })
+                .filter(Boolean))].sort();
+
+        // Filtrede secili proje su an listede olmasa da secenek olarak kalmali.
+        if (filter.project && !projects.includes(filter.project)) projects.push(filter.project);
+
+        const desired = ['<option value="">Tum projeler</option>']
+            .concat(projects.map(function (p) {
+                return '<option value="' + dm.escapeHtml(p) + '">' + dm.escapeHtml(p) + '</option>';
+            })).join('');
+
+        if (select.innerHTML !== desired) select.innerHTML = desired;
+        select.value = filter.project;
+    }
+
+    function renderFilterInfo() {
+        const info = document.getElementById('filter-info');
+        if (!info) return;
+
+        const active = (snapshot.active || []);
+        const recent = (snapshot.recent || []);
+        const total = active.length + recent.length;
+        const shown = active.filter(matches).length + recent.filter(matches).length;
+
+        if (!filter.project && !filter.text && !filter.onlyFailed) {
+            info.textContent = 'Filtre yok · ' + total + ' kayit. Ustteki gostergeler her zaman tum projelerin 24 saatlik toplamidir.';
+            return;
+        }
+
+        info.textContent = 'Filtre aktif · ' + shown + '/' + total
+            + ' kayit gosteriliyor (gostergeler filtreden etkilenmez).';
     }
 
     function renderStats(stats) {
@@ -51,12 +134,16 @@
         const body = document.getElementById('active-body');
         if (!body) return;
 
-        if (!rows || rows.length === 0) {
-            body.innerHTML = emptyRow(6, 'Su anda calisan deployment yok.');
+        const visible = (rows || []).filter(matches);
+
+        if (visible.length === 0) {
+            body.innerHTML = emptyRow(6, (rows || []).length === 0
+                ? 'Su anda calisan deployment yok.'
+                : 'Filtreye uyan calisan deployment yok.');
             return;
         }
 
-        body.innerHTML = rows.map(function (r) {
+        body.innerHTML = visible.map(function (r) {
             const started = r.startedAt || r.createdAt;
             return '<tr class="row-running">' +
                 '<td>' + dm.statusBadge(r.status) + '</td>' +
@@ -65,7 +152,7 @@
                 '<td>' + dm.formatTime(started) + '</td>' +
                 '<td class="fw-semibold text-info" data-elapsed-from="' + started + '">' +
                     dm.formatDuration((Date.now() - new Date(started).getTime()) / 1000) + '</td>' +
-                '<td class="text-end">' + detailsLink(r.deploymentId) + '</td>' +
+                '<td class="text-end text-nowrap">' + logButton(r) + detailsLink(r.deploymentId) + '</td>' +
                 '</tr>';
         }).join('');
     }
@@ -99,12 +186,16 @@
         const body = document.getElementById('recent-body');
         if (!body) return;
 
-        if (!rows || rows.length === 0) {
-            body.innerHTML = emptyRow(7, 'Kayit yok.');
+        const visible = (rows || []).filter(matches);
+
+        if (visible.length === 0) {
+            body.innerHTML = emptyRow(7, (rows || []).length === 0
+                ? 'Kayit yok.'
+                : 'Filtreye uyan kayit yok.');
             return;
         }
 
-        body.innerHTML = rows.map(function (r) {
+        body.innerHTML = visible.map(function (r) {
             const cssClass = r.status === 'error' || r.status === 'cancelled' ? 'row-failed' : '';
             return '<tr class="' + cssClass + '">' +
                 '<td>' + dm.statusBadge(r.status) + '</td>' +
@@ -113,7 +204,7 @@
                 '<td>' + dm.formatTime(r.createdAt) + '</td>' +
                 '<td>' + (r.durationSeconds == null ? '—' : dm.formatDuration(r.durationSeconds)) + '</td>' +
                 '<td class="error-cell">' + (r.errorSummary ? '<code>' + dm.escapeHtml(r.errorSummary) + '</code>' : '') + '</td>' +
-                '<td class="text-end">' + detailsLink(r.deploymentId) + '</td>' +
+                '<td class="text-end text-nowrap">' + logButton(r) + detailsLink(r.deploymentId) + '</td>' +
                 '</tr>';
         }).join('');
     }
@@ -153,6 +244,14 @@
         return '<a class="btn btn-sm btn-outline-light" href="/Deployments/Details/' + encodeURIComponent(id) + '">Detay</a>';
     }
 
+    /// Log dosyasi olan satirlarda onizleme butonu (bkz. log-preview.js).
+    function logButton(r) {
+        if (!r.hasLog) return '';
+        return '<button type="button" class="btn btn-sm btn-outline-info me-1" ' +
+            'data-log-preview="' + dm.escapeHtml(r.deploymentId) + '" ' +
+            'data-log-label="' + dm.escapeHtml(r.serviceName) + '">Log</button>';
+    }
+
     function emptyRow(colspan, text) {
         return '<tr><td colspan="' + colspan + '" class="text-center text-secondary py-4">' + dm.escapeHtml(text) + '</td></tr>';
     }
@@ -183,7 +282,47 @@
         pollTimer = null;
     }
 
+    function wireFilterControls() {
+        const project = document.getElementById('filter-project');
+        const text = document.getElementById('filter-text');
+        const failed = document.getElementById('filter-failed');
+        const clear = document.getElementById('filter-clear');
+
+        if (text) text.value = filter.text;
+        if (failed) failed.checked = filter.onlyFailed;
+
+        function changed() {
+            saveFilter();
+            if (snapshot) render(snapshot);
+        }
+
+        if (project) project.addEventListener('change', function () {
+            filter.project = project.value;
+            changed();
+        });
+
+        if (text) text.addEventListener('input', function () {
+            filter.text = text.value.trim();
+            changed();
+        });
+
+        if (failed) failed.addEventListener('change', function () {
+            filter.onlyFailed = failed.checked;
+            changed();
+        });
+
+        if (clear) clear.addEventListener('click', function () {
+            filter.project = '';
+            filter.text = '';
+            filter.onlyFailed = false;
+            if (text) text.value = '';
+            if (failed) failed.checked = false;
+            changed();
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        wireFilterControls();
         render(window.__initialSnapshot);
 
         const connection = new signalR.HubConnectionBuilder()

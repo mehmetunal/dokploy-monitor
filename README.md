@@ -15,10 +15,16 @@ Cevapladigi sorular:
 
 ```
 src/DokployMonitor.Core             Varliklar, sozlesmeler, pano modelleri (bagimsiz)
-src/DokployMonitor.Infrastructure   Dokploy REST istemcisi, EF Core (SQLite), log okuyucu
+src/DokployMonitor.Infrastructure   Dokploy REST istemcisi, EF Core (SQLite), FluentMigrator semasi, log okuyucu
 src/DokployMonitor.Web              MVC ekranlari, SignalR, arka plan servisleri, webhook ucu
 tests/DokployMonitor.Tests          xUnit testleri
 ```
+
+| Konu | Kullanilan | Nerede |
+|---|---|---|
+| Veritabani semasi | **FluentMigrator** (acilista `MigrateUp`) | `Infrastructure/Persistence/Migrations` |
+| Sorgu / kayit | EF Core (SQLite) | `Infrastructure/Persistence/MonitorDbContext.cs` |
+| Yapilandirma ve istek dogrulama | **FluentValidation** (`ValidateOnStart` ile fail-fast) | `*Validator.cs`, `Infrastructure/Validation` |
 
 ### Veri nereden geliyor?
 
@@ -63,7 +69,7 @@ Tum ayarlar ortam degiskeni ile gecilebilir (`__` ic ice bolum ayraci):
 | Degisken | Aciklama |
 |---|---|
 | `Dokploy__BaseUrl` | Dokploy koku, `/api` olmadan. Ayni sunucuda: `http://dokploy:3000` |
-| `Dokploy__ApiKey` | Dokploy → Settings → API Keys |
+| `Dokploy__ApiKey` | Dokploy → Settings → API Keys ([diyalogun tum alanlari](#dokploy-api-anahtari-generate-api-key)) |
 | `Dokploy__ForceLegacyDiscovery` | `true` ise merkezi endpoint hic denenmez |
 | `Dokploy__AllowInvalidCertificates` | Self-signed sertifika icin |
 | `ConnectionStrings__Default` | SQLite yolu (varsayilan `/app/data/monitor.db`) |
@@ -71,6 +77,86 @@ Tum ayarlar ortam degiskeni ile gecilebilir (`__` ic ice bolum ayraci):
 | `Monitor__RetentionDays` | Kayit saklama suresi (90, `0` = sinirsiz) |
 | `Logs__MountPath` / `Logs__HostPath` | Log mount noktasi ve Dokploy'un log koku |
 | `Webhook__Token` | Webhook URL'indeki gizli anahtar. **Bos ise webhook ucu kapalidir (404).** |
+
+---
+
+## Dokploy API anahtari (Generate API Key)
+
+`Dokploy__ApiKey` degeri Dokploy panelinde **Settings → API Keys → Generate API Key**
+diyalogundan uretilir: *"Create a new API key for accessing the API. You can set an expiration
+date and a custom prefix for better organization."*
+
+Anahtar her istekte `x-api-key` basligiyla gonderilir.
+
+### Temel alanlar
+
+| Alan | Varsayilan / yer tutucu | Ne ise yarar | Monitor icin |
+|---|---|---|---|
+| **Name** | `My API Key` | Anahtarin panelde gorunen adi; sadece etiket, yetkiyi etkilemez | `dokploy-monitor` |
+| **Prefix** | `my_app` | Uretilen anahtarin basina eklenen on ek; birden fazla anahtari ayirt etmeyi kolaylastirir | `monitor` (istege bagli, bos da birakilabilir) |
+| **Expiration** | `Never` | Anahtarin gecerlilik suresi | **Never.** Sure verirseniz o tarihte Monitor sessizce 401/403 almaya baslar; belirti sadece Tanilama'daki "API anahtari gecerli ✘" olur |
+| **Organization** | `Select organization` | Anahtarin hangi organizasyonun verilerini gorecegi | Izlenecek deployment'larin bulundugu organizasyon. Yanlis secim = baglanti saglikli ama **pano bos** |
+
+### Rate Limiting
+
+| Alan | Varsayilan | Ne ise yarar | Monitor icin |
+|---|---|---|---|
+| **Enable Rate Limiting** | kapali | Belirli bir zaman penceresi icindeki istek sayisini sinirlar (acilinca pencere/adet alanlari gorunur) | **Kapali birakin** — gerekce asagida |
+
+### Request Limiting
+
+| Alan | Yer tutucu | Ne ise yarar | Monitor icin |
+|---|---|---|---|
+| **Total Request Limit** | `Leave empty for unlimited` | Anahtarin toplam kullanabilecegi istek adedi; bos = sinirsiz | **Bos** |
+| **Refill Amount** | `Amount to refill` | Her yenilemede kotaya eklenecek istek adedi | Bos (Total Request Limit bosken islevsiz) |
+| **Refill Interval** | `Select refill interval` | Kotanin ne siklikla yenilenecegi. Secenekler: `1 hour`, `6 hours`, `12 hours`, `1 day`, `7 days`, `30 days` | Bos (listeyi secim yapmadan `Esc` ile kapatin) |
+
+Diyalog **Cancel** / **Generate** ile kapanir. Uretilen anahtar **yalnizca bir kez** gosterilir;
+kaybederseniz yenisini uretip `Dokploy__ApiKey` degiskenini guncellemek gerekir.
+
+Anahtarin gidecegi yer: uretimde Dokploy'daki **Environment** sekmesi (`Dokploy__ApiKey`),
+yerelde ise [user-secrets](#gizli-anahtarlar-user-secrets) — commit'lenen `appsettings*.json`
+dosyalarina **yazilmaz**.
+
+### Nicin kota/limit koymamak gerekiyor?
+
+Monitor iki arka plan iscisiyle surekli polling yapar ve her biri ayri istek uretir
+(`DeploymentSyncWorker` → `deployment.allCentralized`, `QueueSyncWorker` → `deployment.queueList`):
+
+| Durum | Istek / dakika | Istek / gun |
+|---|---|---|
+| Bos (15 sn + 5 sn) | ~16 | ~23.000 |
+| Aktif deployment (2 sn + 5 sn) | ~42 | ~60.000 (gun boyu aktif kalirsa) |
+| Legacy mod, N servis | (N+1) × 4 + 12 | servis sayisiyla dogrusal buyur |
+
+Limit asildiginda olanlar zincirleme kotulesir:
+
+- 429 yanitlari GET'lerde **2 kez daha yeniden denenir** (POST'lar denenmez), yani sinira
+  dayanan her cagri kotadan uc kat harcar.
+- `deployment.allCentralized` 429 alirsa istemci bunu "endpoint yok" sayip ayni dongude
+  legacy moda duser — bu mod **daha fazla** istek atar.
+- `deployment.queueList` 429 alirsa o dongude kuyruk gorunumu "kullanilamiyor" olur.
+- Pano hata gostermez, son bilinen durumu tutar: veri **eski ama yesil** gorunur.
+
+Yine de sinir koymak zorundaysaniz once polling'i seyreltin
+(`Monitor__IdlePollSeconds`, `Monitor__ActivePollSeconds`, `Monitor__QueuePollSeconds`)
+ve kotayi bu araliklara gore hesaplayin. Varsayilan araliklarla emniyetli bir ust sinir:
+
+| Alan | Deger |
+|---|---|
+| Total Request Limit | `10000` |
+| Refill Amount | `10000` |
+| Refill Interval | `1 hour` |
+
+Yenileme araligini **saatlik** tutun: `1 day` ve uzeri araliklarda tek bir yogun build gunu
+kotayi tuketir ve sonraki yenilemeye kadar pano guncellenmez.
+
+### Yetki
+
+Monitor bu anahtarla cogunlukla **okuma** yapar; panelden aksiyon kullanilacaksa iki **yazma**
+cagrisina da ihtiyaci vardir: `deployment.killProcess` ve `application.redeploy` /
+`compose.redeploy`. Durdur / Yeniden Deploy butonlarini kullanmayacaksaniz anahtari salt-okunur
+bir kullanicidan uretmek yeterlidir.
 
 ---
 
@@ -101,11 +187,12 @@ Ozet:
    mkdir -p /var/lib/dokploy-monitor/data && chown -R 1654:1654 /var/lib/dokploy-monitor/data
    ```
 5. **Domain**: Container Port **8080**, HTTPS + Let's Encrypt.
-6. **Webhook** (Dokploy → Settings → Notifications → Webhook):
+6. **Webhook** (Dokploy → Settings → Notifications → Add Notification → saglayici: **Custom**):
    ```
    https://monitor.<alan-adiniz>/api/webhooks/dokploy?token=<Webhook__Token>
    ```
-   `App Deploy` ve `App Build Error` olaylarini isaretleyin.
+   `App Deploy` ve `App Build Error` olaylarini isaretleyin. Token bu ekranda uretilmez —
+   URL'in icinde tasinir, degeri `Webhook__Token` ile ayni olmali.
 7. Deploy sonrasi `/Dashboard/Diagnostics` sayfasindan tum kontrollerin ✔ oldugunu dogrulayin.
 
 ---
@@ -118,27 +205,95 @@ dotnet test
 dotnet run --project src/DokployMonitor.Web
 ```
 
-`appsettings.Development.json` yer tutucu degerlerle gelir; gercek bir Dokploy'a baglanmak icin
-kullanici gizli anahtarlarini kullanin:
+### Gizli anahtarlar (user-secrets)
+
+`appsettings.Development.json` yer tutucu degerlerle gelir ve **commit'lenir** — gercek API
+anahtarini oraya yazmayin. Yerel calisirken gizli degerler user-secrets'ta tutulur: dosya
+proje klasorunun disinda, ev dizininde durur, dolayisiyla git'e hic girmez.
+
+Ilk kurulum (klasorde `cd src/DokployMonitor.Web` olmak sart — komutlar csproj'a gore calisir):
 
 ```bash
 cd src/DokployMonitor.Web
-dotnet user-secrets init
+dotnet user-secrets init                      # csproj'a UserSecretsId ekler (bir kez, zaten var)
 dotnet user-secrets set "Dokploy:BaseUrl" "https://dokploy.sirketiniz.com"
-dotnet user-secrets set "Dokploy:ApiKey" "..."
+dotnet user-secrets set "Dokploy:ApiKey" "dokploy_monitor_<anahtar>"
+dotnet user-secrets set "Webhook:Token" "$(openssl rand -hex 32)"
 ```
 
-Sema degisikligi sonrasi migration:
+Gunluk kullanim:
 
-```bash
-dotnet dotnet-ef migrations add <Ad> \
-  --project src/DokployMonitor.Infrastructure \
-  --startup-project src/DokployMonitor.Web \
-  --output-dir Persistence/Migrations
+| Islem | Komut |
+|---|---|
+| Tum anahtarlari listele | `dotnet user-secrets list` |
+| Ekle / degistir (ayni komut) | `dotnet user-secrets set "Dokploy:ApiKey" "<yeni deger>"` |
+| Tek anahtari sil | `dotnet user-secrets remove "Dokploy:ApiKey"` |
+| Hepsini sil | `dotnet user-secrets clear` |
+| Baska klasorden calistir | `dotnet user-secrets list --project src/DokployMonitor.Web` |
+
+Nerede saklanir?
+
 ```
+~/.microsoft/usersecrets/<UserSecretsId>/secrets.json     # macOS / Linux
+%APPDATA%\Microsoft\UserSecrets\<UserSecretsId>\secrets.json   # Windows
+```
+
+`<UserSecretsId>` degeri `src/DokployMonitor.Web/DokployMonitor.Web.csproj` icinde yazilidir.
+Dosya duz JSON'dur (sifreli degil); izinleri `600` olacak sekilde olusturulur. Elle de
+duzenlenebilir, ancak `set` komutunu kullanmak daha guvenlidir.
+
+Dikkat edilecek noktalar:
+
+- Ic ice bolumler **iki nokta** ile yazilir: `Dokploy:ApiKey`. Ortam degiskeninde bunun
+  karsiligi `Dokploy__ApiKey` (cift alt cizgi) — ikisini karistirmayin.
+- User-secrets **yalnizca Development ortaminda** okunur. Uretimde (Dokploy) deger ortam
+  degiskeninden gelir; oraya user-secrets tasinmaz.
+- Deger degistirdikten sonra uygulamayi yeniden baslatin; yapilandirma acilista okunur.
+- `list` ciktisi anahtarlari **maskesiz** yazar; ekran paylasirken dikkat.
 
 > `NuGet.config` bu klasorde kurumsal AtplQuestions feed'ini devre disi birakir; paketler yalnizca
 > nuget.org'dan cekilir.
+
+### Sema degisikligi (FluentMigrator)
+
+Sema **FluentMigrator** ile yonetilir; EF Core yalnizca sorgu/kayit katmanidir. Migration'lar
+uygulama acilirken `MigrateUp` ile uygulanir — ayrica bir CLI adimi yok.
+
+1. `src/DokployMonitor.Infrastructure/Persistence/Migrations/` altina yeni bir sinif ekleyin.
+   Dosya adi tarih onekli, surum numarasi artan olmali:
+
+   ```csharp
+   [Migration(20260801120000, "Deployment tablosuna commit bilgisi ekle")]
+   public sealed class AddCommitInfo : Migration
+   {
+       public override void Up() =>
+           Alter.Table("Deployments").AddColumn("CommitSha").AsString(40).Nullable();
+
+       public override void Down() =>
+           Delete.Column("CommitSha").FromTable("Deployments");
+   }
+   ```
+
+2. EF tarafindaki varlik/`MonitorDbContext` eslesmesini ayni sekilde guncelleyin.
+3. `dotnet test` kosun: `MigrationSchemaTests` FluentMigrator semasini EF modelinin urettigi
+   semayla kolon kolon karsilastirir; iki taraf ayrilirsa test kirmizi olur.
+
+> SQLite kisitlari: `ALTER COLUMN` yok, FK'ler `CREATE TABLE` icinde satir ici tanimlanmali.
+> Tarih kolonlari **TEXT** (UTC ISO-8601) olarak tutulur — `AsDateTime()` kullanmayin.
+
+### Yapilandirma dogrulama (FluentValidation)
+
+`Dokploy`, `Logs`, `Monitor` ve `Webhook` bolumlerinin her biri bir `AbstractValidator` ile
+dogrulanir ve `ValidateOnStart()` ile **acilista** kontrol edilir: hatali ayarda uygulama
+ayaga kalkmaz, log'a hangi alanin neden gecersiz oldugunu yazar. Ornek:
+
+```
+DokployOptions.BaseUrl: Panelin koku yazilmali, sonuna /api eklenmemeli; ...
+DokployOptions.ApiKey: Zorunlu. Dokploy > Settings > API Keys > Generate API Key ile uretilir.
+```
+
+Ayni altyapi ekran filtrelerinde de kullanilir (`DeploymentFilterValidator`): gecersiz bir
+durum filtresi geldiginde sorgu hic calistirilmaz, kullaniciya sebep gosterilir.
 
 ---
 

@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace DokployMonitor.Infrastructure.Dokploy;
 
 public sealed class DokployOptions
@@ -10,11 +8,9 @@ public sealed class DokployOptions
     /// Dokploy panelinin koku, /api olmadan. Ornek: https://dokploy.sirket.com
     /// Ayni sunucuda calisiyorsak http://dokploy:3000 (internal network) tercih edilir.
     /// </summary>
-    [Required]
     public string BaseUrl { get; set; } = string.Empty;
 
     /// <summary>Dokploy > Settings > API Keys altindan uretilen anahtar (x-api-key).</summary>
-    [Required]
     public string ApiKey { get; set; } = string.Empty;
 
     public int TimeoutSeconds { get; set; } = 30;

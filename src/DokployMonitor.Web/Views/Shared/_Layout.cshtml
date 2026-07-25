@@ -10,15 +10,18 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] · Dokploy Monitor</title>
+    <title>@ViewData["Title"] · Trimango Dokploy Monitör</title>
+    <link rel="icon" href="~/img/trimango-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <nav class="navbar navbar-expand-lg border-bottom border-secondary-subtle mb-3">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-semibold" asp-controller="Dashboard" asp-action="Index">
-                <span class="brand-dot"></span> Dokploy Monitor
+            <a class="navbar-brand fw-semibold d-flex align-items-center gap-2"
+               asp-controller="Dashboard" asp-action="Index">
+                <img src="~/img/trimango-logo.svg" alt="Trimango" class="brand-logo" />
+                <span class="brand-suffix">Dokploy Monitör</span>
             </a>
             <div class="navbar-nav me-auto">
                 <a class="@NavClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">Canli Pano</a>
@@ -26,8 +29,16 @@
                 <a class="@NavClass("Errors")" asp-controller="Errors" asp-action="Index">Hata Analizi</a>
                 <a class="nav-link @(action == "Diagnostics" ? "active" : "")" asp-controller="Dashboard" asp-action="Diagnostics">Tanilama</a>
             </div>
-            <div class="navbar-text small">
+            <div class="d-flex align-items-center gap-3 small">
                 <span id="connection-status" class="badge text-bg-secondary">baglaniyor…</span>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <span class="text-secondary">@User.Identity.Name</span>
+                    <form method="post" asp-controller="Account" asp-action="Logout" class="m-0">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Cikis</button>
+                    </form>
+                }
             </div>
         </div>
     </nav>
@@ -44,8 +55,12 @@
         @RenderBody()
     </main>
 
+    @await Html.PartialAsync("_LogPreviewModal")
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/lib/signalr/signalr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/log-preview.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

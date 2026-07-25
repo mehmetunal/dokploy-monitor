@@ -3,20 +3,62 @@
     --dm-done: #22c55e;
     --dm-error: #ef4444;
     --dm-cancelled: #a1a1aa;
+
+    /* Trimango marka renkleri (logodaki yesil ve turuncu) */
+    --tm-green: #16b183;
+    --tm-green-dark: #0f8f69;
+    --tm-orange: #f8990d;
 }
 
 body {
     font-size: 0.925rem;
 }
 
-.brand-dot {
-    display: inline-block;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--dm-running);
-    margin-right: .35rem;
-    box-shadow: 0 0 8px var(--dm-running);
+/* ------------------------------------------------------------ Marka / logo */
+.navbar-brand .brand-logo {
+    height: 26px;
+    width: auto;
+    vertical-align: -6px;
+}
+
+.navbar-brand .brand-suffix {
+    color: var(--bs-secondary-color);
+    font-weight: 500;
+}
+
+.btn-brand {
+    background: var(--tm-green);
+    border-color: var(--tm-green);
+    color: #fff;
+}
+
+.btn-brand:hover,
+.btn-brand:focus {
+    background: var(--tm-green-dark);
+    border-color: var(--tm-green-dark);
+    color: #fff;
+}
+
+/* ------------------------------------------------------------ Giris ekrani */
+.login-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 26rem;
+    border-color: var(--bs-border-color);
+}
+
+.login-logo {
+    height: 42px;
+    width: auto;
+    max-width: 100%;
 }
 
 /* ---------------------------------------------------------- Ozet kartlar */

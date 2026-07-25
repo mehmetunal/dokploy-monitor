@@ -159,19 +159,31 @@ https://monitor.sirketiniz.com/health   →  Healthy
 
 Bu adim, build biter bitmez sonucun panoya **aninda** dusmesini saglar (polling'i beklemez).
 
+**Onemli:** Bu ekran bir token **uretmez**. Token'i Adim 2'de siz uretiyorsunuz; burada
+yalnizca o token'i icinde tasiyan URL'i Dokploy'a tanitiyorsunuz.
+
 1. Dokploy → **Settings → Notifications** → **Add Notification**
-2. Saglayici: **Webhook**
-3. Ad: `Dokploy Monitor`
-4. URL:
+2. **Select a provider** listesinden **Custom** secin.
+   (Slack / Telegram / Discord / Lark / Microsoft Teams / Email / Resend / Gotify / ntfy /
+   Pushover kutulari hazir servisler icindir; Monitor'un bekledigi ham JSON'u yalnizca
+   **Custom** gonderir.)
+3. **Name**: `Dokploy Monitor`
+4. **Webhook URL**:
    ```
    https://monitor.sirketiniz.com/api/webhooks/dokploy?token=ADIM_2_TOKENI
    ```
-5. Olaylardan en az sunlari isaretleyin:
-   - ✅ **App Deploy** (basarili build)
-   - ✅ **App Build Error** (hatali build)
+   Token URL'in **icinde** gider; ayri bir alan yoktur. Ek bir "Channel" / baslik alani
+   cikarsa bos birakin.
+5. **Select the actions** bolumunde en az sunlari acin:
+   - ✅ **App Deploy** — "Trigger the action when a app is deployed." (basarili build)
+   - ✅ **App Build Error** — "Trigger the action when the build fails." (hatali build)
    - Istege bagli: Database Backup, Volume Backup, Docker Cleanup, Dokploy Restart
-6. **Test Notification** ile deneyin — Monitor'un ana panosundaki
-   "Webhook Bildirimleri" listesinde gorunmeli.
+6. **Create** ile kaydedin, ardindan **Test Notification** ile deneyin — Monitor'un ana
+   panosundaki "Webhook Bildirimleri" listesinde gorunmeli.
+
+> **Test Notification** butonu kaydetmeden once de calisir; Monitor'da hicbir sey gorunmuyorsa
+> once URL'deki token ile `Webhook__Token` degerinin ayni oldugunu kontrol edin (401 = token
+> uyusmuyor, 404 = `Webhook__Token` bos birakilmis).
 
 > Dokploy webhook payload'inda `deploymentId` gondermez; Monitor servis eslesmesini
 > `buildLink` icindeki kimlikten cikarir. Bu yuzden webhook, deployment tablosunun
@@ -199,6 +211,7 @@ Ayni sayfada log mount'unun durumu ve kopyalanabilir webhook URL'i de gosterilir
 | Belirti | Neden / Cozum |
 |---|---|
 | Acilista `unable to open database file` | Adim 3'teki `chown 1654:1654` yapilmamis |
+| Acilista `OptionsValidationException` / `DokployOptions.BaseUrl: ...` | Yapilandirma FluentValidation ile acilista dogrulanir; log'daki alan adini duzeltin (or. `BaseUrl`'in sonundaki `/api`'yi silin) |
 | Tanilama: "Sunucuya erisim ✘" | `http://dokploy:3000` cozulemiyor → panelin public URL'ini kullanin |
 | Tanilama: "API anahtari gecerli ✘" (401/403) | Anahtar yanlis ya da yetkisi yetersiz |
 | Pano bos, hata yok | Henuz hic deployment yok ya da API anahtari baska bir organizasyona ait |

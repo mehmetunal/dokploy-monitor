@@ -3,6 +3,7 @@ using DokployMonitor.Core.Deployments;
 using DokployMonitor.Infrastructure.Logs;
 using DokployMonitor.Web.Models;
 using DokployMonitor.Web.Services;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -11,6 +12,7 @@ namespace DokployMonitor.Web.Controllers;
 public sealed class DeploymentsController(
     DashboardQueryService dashboard,
     IDeploymentLogReader logReader,
+    IContainerLogReader containerLogReader,
     IDokployClient dokploy,
     MonitorState state,
     IOptions<LogOptions> logOptions,
@@ -18,18 +20,30 @@ public sealed class DeploymentsController(
 {
     private readonly LogOptions _logOptions = logOptions.Value;
 
-    /// <summary>Filtrelenebilir deployment gecmisi.</summary>
-    public async Task<IActionResult> Index(string? project, string? status, string? q, CancellationToken ct)
+    /// <summary>
+    /// Filtrelenebilir deployment gecmisi. Filtre FluentValidation ile dogrulanir;
+    /// gecersiz parametrede sorgu hic calistirilmaz, ekranda sebep gosterilir.
+    /// </summary>
+    public async Task<IActionResult> Index(
+        [FromQuery] DeploymentFilter filter,
+        [FromServices] IValidator<DeploymentFilter> validator,
+        CancellationToken ct)
     {
-        var results = await dashboard.SearchAsync(project, status, q, take: 200, ct);
+        var validation = await validator.ValidateAsync(filter, ct);
+        foreach (var error in validation.Errors)
+        {
+            ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+        }
+
+        IReadOnlyList<TrackedDeployment> results = validation.IsValid
+            ? await dashboard.SearchAsync(filter, ct)
+            : [];
 
         return View(new DeploymentHistoryViewModel
         {
             Deployments = results,
             Projects = await dashboard.GetProjectNamesAsync(ct),
-            SelectedProject = project,
-            SelectedStatus = status,
-            Query = q,
+            Filter = filter,
         });
     }
 
@@ -54,15 +68,30 @@ public sealed class DeploymentsController(
             Events = await dashboard.GetEventsAsync(id, ct),
             History = deployment.ServiceId is null
                 ? []
-                : await dashboard.GetServiceHistoryAsync(deployment.ServiceId, take: 15, ct),
+                : await dashboard.GetServiceHistoryAsync(deployment.ServiceId, take: 25, ct),
+            ProjectHistory = deployment.ProjectName is null
+                ? []
+                : await dashboard.GetProjectHistoryAsync(deployment.ProjectName, deployment.ServiceId, take: 10, ct),
             Log = log,
             CanStreamLive = deployment.Status.IsActive() && log.Available,
         });
     }
 
-    /// <summary>SignalR kullanilamadiginda log kuyrugunu HTTP ile cekmek icin.</summary>
+    /// <summary>
+    /// Log kuyrugunu HTTP ile cekmek icin: SignalR kullanilamadiginda ve liste
+    /// ekranlarindaki log onizlemesinde kullanilir.
+    ///
+    /// <paramref name="source"/>: <c>docker</c> = calisan servisin container logu
+    /// (Engine API), <c>build</c> = Dokploy'un derleme logu (dosya). Bos birakilirsa
+    /// once container logu denenir, yoksa build logune dusulur.
+    /// </summary>
     [HttpGet("deployments/{id}/log")]
-    public async Task<IActionResult> Log(string id, long offset, CancellationToken ct)
+    public async Task<IActionResult> Log(
+        string id,
+        long offset,
+        int? tail,
+        string? source,
+        CancellationToken ct)
     {
         var deployment = await dashboard.FindAsync(id, ct);
         if (deployment is null)
@@ -70,8 +99,62 @@ public sealed class DeploymentsController(
             return NotFound();
         }
 
-        var result = await logReader.ReadTailAsync(deployment.LogPath, _logOptions.DefaultTailLines, ct);
-        return Json(new { result.Lines, result.Offset, result.Available, result.UnavailableReason, requestedOffset = offset });
+        var lines = Math.Clamp(tail ?? _logOptions.DefaultTailLines, 20, _logOptions.DefaultTailLines);
+        var wantsBuild = string.Equals(source, "build", StringComparison.OrdinalIgnoreCase);
+
+        LogReadResult result;
+        string usedSource;
+
+        if (wantsBuild)
+        {
+            result = await ReadBuildLogAsync(deployment, lines, ct);
+            usedSource = "build";
+        }
+        else
+        {
+            result = await containerLogReader.ReadTailAsync(ContainerName(deployment), lines, ct);
+            usedSource = "docker";
+
+            // Otomatik mod: container logu yoksa (silinmis servis, hatali build) build logu.
+            if (!result.Available && string.IsNullOrWhiteSpace(source))
+            {
+                var build = await ReadBuildLogAsync(deployment, lines, ct);
+                if (build.Available)
+                {
+                    result = build;
+                    usedSource = "build";
+                }
+            }
+        }
+
+        return Json(new
+        {
+            result.Lines,
+            result.Offset,
+            result.Available,
+            result.UnavailableReason,
+            source = usedSource,
+            requestedOffset = offset,
+        });
+    }
+
+    /// <summary>Docker tarafindaki ad: Dokploy servisleri appName ile calisir.</summary>
+    private static string? ContainerName(TrackedDeployment deployment) =>
+        !string.IsNullOrWhiteSpace(deployment.AppName) ? deployment.AppName : deployment.ServiceName;
+
+    /// <summary>Build logu: canli dosya yoksa arsivlenmis kopya.</summary>
+    private async Task<LogReadResult> ReadBuildLogAsync(
+        TrackedDeployment deployment,
+        int lines,
+        CancellationToken ct)
+    {
+        var result = await logReader.ReadTailAsync(deployment.LogPath, lines, ct);
+        if (!result.Available && deployment.ArchivedLogPath is not null)
+        {
+            result = await ReadArchivedAsync(deployment.ArchivedLogPath, ct, lines);
+        }
+
+        return result;
     }
 
     [HttpPost]
@@ -131,11 +214,19 @@ public sealed class DeploymentsController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private static async Task<LogReadResult> ReadArchivedAsync(string archivedPath, CancellationToken ct)
+    private static async Task<LogReadResult> ReadArchivedAsync(
+        string archivedPath,
+        CancellationToken ct,
+        int? tail = null)
     {
         try
         {
             var lines = await System.IO.File.ReadAllLinesAsync(archivedPath, ct);
+            if (tail is { } count && lines.Length > count)
+            {
+                lines = [.. lines[^count..]];
+            }
+
             return new LogReadResult(lines, 0, true, null);
         }
         catch (IOException)

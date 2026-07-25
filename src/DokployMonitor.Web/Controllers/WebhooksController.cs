@@ -6,6 +6,7 @@ using DokployMonitor.Core.Notifications;
 using DokployMonitor.Infrastructure.Persistence;
 using DokployMonitor.Web.Options;
 using DokployMonitor.Web.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -23,6 +24,8 @@ namespace DokployMonitor.Web.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/webhooks")]
+// Dokploy bu ucu oturum acmadan cagirir; yetki denetimi URL'deki token ile yapilir.
+[AllowAnonymous]
 public sealed partial class WebhooksController(
     MonitorDbContext db,
     MonitorState state,

@@ -1,13 +1,16 @@
-@model DokployMonitor.Core.Abstractions.DokployHealth
+@model DokployMonitor.Web.Models.DiagnosticsViewModel
 @using Microsoft.Extensions.Options
 @using DokployMonitor.Infrastructure.Dokploy
 @using DokployMonitor.Infrastructure.Logs
 @inject IOptions<DokployOptions> DokployOptions
 @inject IOptions<LogOptions> LogOptions
+@inject IOptions<DokployMonitor.Infrastructure.Docker.DockerOptions> DockerOptions
 @{
     ViewData["Title"] = "Tanilama";
     var dokploy = DokployOptions.Value;
     var logs = LogOptions.Value;
+    var docker = DockerOptions.Value;
+    var health = Model.Dokploy;
 
     string Mark(bool ok) => ok ? "✔" : "✘";
     string Tone(bool ok) => ok ? "text-success" : "text-danger";
@@ -22,33 +25,69 @@
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-6">Sunucuya erisim</dt>
-                    <dd class="col-6 @Tone(Model.IsReachable)">@Mark(Model.IsReachable)</dd>
+                    <dd class="col-6 @Tone(health.IsReachable)">@Mark(health.IsReachable)</dd>
 
                     <dt class="col-6">API anahtari gecerli</dt>
-                    <dd class="col-6 @Tone(Model.IsAuthorized)">@Mark(Model.IsAuthorized)</dd>
+                    <dd class="col-6 @Tone(health.IsAuthorized)">@Mark(health.IsAuthorized)</dd>
 
                     <dt class="col-6">deployment.allCentralized</dt>
-                    <dd class="col-6 @Tone(Model.SupportsCentralizedDeployments)">
-                        @Mark(Model.SupportsCentralizedDeployments)
-                        @if (!Model.SupportsCentralizedDeployments)
+                    <dd class="col-6 @Tone(health.SupportsCentralizedDeployments)">
+                        @Mark(health.SupportsCentralizedDeployments)
+                        @if (!health.SupportsCentralizedDeployments)
                         {
                             <span class="small text-secondary d-block">Servis servis toplama moduna dusulecek.</span>
                         }
                     </dd>
 
                     <dt class="col-6">deployment.queueList</dt>
-                    <dd class="col-6 @Tone(Model.SupportsQueueList)">
-                        @Mark(Model.SupportsQueueList)
-                        @if (!Model.SupportsQueueList)
+                    <dd class="col-6 @Tone(health.SupportsQueueList)">
+                        @Mark(health.SupportsQueueList)
+                        @if (!health.SupportsQueueList)
                         {
                             <span class="small text-secondary d-block">Kuyruk gorunumu devre disi kalir.</span>
                         }
                     </dd>
                 </dl>
 
-                @if (Model.Error is not null)
+                @if (health.Error is not null)
                 {
-                    <div class="alert alert-danger mt-3 mb-0 py-2 small">@Model.Error</div>
+                    <div class="alert alert-danger mt-3 mb-0 py-2 small">@health.Error</div>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">Container Logu (docker logs)</div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-6">Yapilandirmada acik</dt>
+                    <dd class="col-6 @Tone(Model.Docker.Enabled)">@Mark(Model.Docker.Enabled)</dd>
+
+                    <dt class="col-6">Soket dosyasi</dt>
+                    <dd class="col-6 @Tone(Model.Docker.SocketExists)">
+                        @Mark(Model.Docker.SocketExists) <code>@docker.SocketPath</code>
+                    </dd>
+
+                    <dt class="col-6">Engine API</dt>
+                    <dd class="col-6 @Tone(Model.Docker.Reachable)">
+                        @Mark(Model.Docker.Reachable)
+                        @if (Model.Docker.ServerVersion is not null)
+                        {
+                            <span class="text-secondary">Docker @Model.Docker.ServerVersion</span>
+                        }
+                    </dd>
+                </dl>
+                @if (Model.Docker.Message is not null)
+                {
+                    <div class="alert alert-warning mt-3 mb-0 py-2 small">@Model.Docker.Message</div>
+                }
+                @if (!Model.Docker.Reachable)
+                {
+                    <div class="small text-secondary mt-2">
+                        Container loglari icin konteynere soketi mount edin:
+                        <code>/var/run/docker.sock:/var/run/docker.sock:ro</code>.
+                        Erisim yoksa log goruntuleyici build loguna duser.
+                    </div>
                 }
             </div>
         </div>

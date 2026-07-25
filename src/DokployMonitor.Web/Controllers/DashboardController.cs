@@ -1,5 +1,7 @@
 using DokployMonitor.Core.Abstractions;
+using DokployMonitor.Web.Models;
 using DokployMonitor.Web.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DokployMonitor.Web.Controllers;
@@ -22,13 +24,21 @@ public sealed class DashboardController(DashboardQueryService dashboard) : Contr
     public async Task<IActionResult> Snapshot(CancellationToken ct) =>
         Json(await dashboard.GetSnapshotAsync(ct));
 
-    /// <summary>Dokploy baglantisi ve yetenek tespiti — kurulum dogrulamasi icin.</summary>
-    public async Task<IActionResult> Diagnostics([FromServices] IDokployClient dokploy, CancellationToken ct)
+    /// <summary>Dokploy baglantisi, container log erisimi ve yetenek tespiti.</summary>
+    public async Task<IActionResult> Diagnostics(
+        [FromServices] IDokployClient dokploy,
+        [FromServices] IContainerLogReader containerLogReader,
+        CancellationToken ct)
     {
-        var health = await dokploy.CheckHealthAsync(ct);
-        return View(health);
+        return View(new DiagnosticsViewModel
+        {
+            Dokploy = await dokploy.CheckHealthAsync(ct),
+            Docker = await containerLogReader.CheckHealthAsync(ct),
+        });
     }
 
+    /// <summary>Hata sayfasi: giris yapilmamis istekler de buraya dusebilir.</summary>
+    [AllowAnonymous]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public IActionResult Error() => View();
 }

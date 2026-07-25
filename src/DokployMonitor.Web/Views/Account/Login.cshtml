@@ -1,0 +1,60 @@
+@model DokployMonitor.Web.Models.LoginInput
+@{
+    ViewData["Title"] = "Giris";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giris · Trimango Dokploy Monitör</title>
+    <link rel="icon" href="~/img/trimango-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="login-body">
+    <main class="login-shell">
+        <div class="login-card card">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <img src="~/img/trimango-logo.svg" alt="Trimango" class="login-logo" />
+                    <div class="text-secondary small mt-2">Dokploy Monitör</div>
+                </div>
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger py-2 small" role="alert">
+                        <div asp-validation-summary="All" class="mb-0"></div>
+                    </div>
+                }
+
+                <form method="post" asp-action="Login">
+                    <input type="hidden" asp-for="ReturnUrl" />
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" asp-for="Email">E-posta</label>
+                        <input class="form-control" asp-for="Email" type="email" autocomplete="username"
+                               autofocus placeholder="ornek@trimango.com" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" asp-for="Password">Parola</label>
+                        <input class="form-control" asp-for="Password" type="password" autocomplete="current-password" />
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" asp-for="RememberMe" type="checkbox" />
+                        <label class="form-check-label small" asp-for="RememberMe">Beni hatirla</label>
+                    </div>
+
+                    <button class="btn btn-brand w-100" type="submit">Giris yap</button>
+                </form>
+            </div>
+        </div>
+        <div class="text-center text-secondary small mt-3">
+            Hesap olusturma ekrani yoktur; ilk yonetici hesabi sunucu yapilandirmasindan gelir.
+        </div>
+    </main>
+</body>
+</html>

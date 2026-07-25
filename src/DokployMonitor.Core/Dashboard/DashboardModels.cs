@@ -124,6 +124,25 @@ public sealed record NotificationRow
     };
 }
 
+/// <summary>
+/// Hata analizi ekranindaki tek bir hata grubu. Adet ve son gorulme, ekrandaki
+/// filtreye (proje / tarih araligi) gore hesaplanir — bu yuzden ErrorSignature
+/// varliginin global sayaclari yerine bu satir kullanilir.
+/// </summary>
+public sealed record ErrorGroupRow
+{
+    public required string Hash { get; init; }
+    public required string NormalizedMessage { get; init; }
+    public int Count { get; init; }
+    public DateTimeOffset LastSeenAt { get; init; }
+    public string? LastServiceName { get; init; }
+    public string? LastProjectName { get; init; }
+
+    /// <summary>Bu hatayi en son veren deployment; log onizlemesi buradan acilir.</summary>
+    public string? LatestDeploymentId { get; init; }
+    public bool LatestHasLog { get; init; }
+}
+
 /// <summary>Ana panonun tek seferde ihtiyac duydugu her sey.</summary>
 public sealed record DashboardSnapshot
 {

@@ -27,6 +27,41 @@ window.dm = (function () {
         return '<span class="status-badge ' + m.css + '">' + m.label + '</span>';
     }
 
+    // Docker/build ciktilarindaki ANSI renk kodlari (or. \x1b[31m).
+    const ansiPattern = /\x1B\[[0-9;?]*[ -/]*[@-~]/g;
+
+    function cleanAnsi(line) {
+        return String(line === null || line === undefined ? '' : line).replace(ansiPattern, '');
+    }
+
+    // Log satirini kabaca siniflandirir: hata satirlari goz taramasinda one cikmali.
+    function classifyLogLine(line) {
+        const lower = line.toLowerCase();
+        if (lower.includes('error') || lower.includes('failed') || lower.includes('fatal') || lower.includes('hata')) {
+            return 'log-line log-error';
+        }
+        if (lower.includes('warn')) return 'log-line log-warn';
+        if (lower.includes('successfully') || lower.includes('success') || lower.includes('done')) {
+            return 'log-line log-success';
+        }
+        return 'log-line';
+    }
+
+    /// Log satirlarini verilen kaba (element) basar; ANSI temizler, siniflandirir.
+    function renderLogLines(container, lines) {
+        const fragment = document.createDocumentFragment();
+
+        lines.forEach(function (raw) {
+            const line = cleanAnsi(raw);
+            const div = document.createElement('div');
+            div.className = classifyLogLine(line);
+            div.textContent = line;
+            fragment.appendChild(div);
+        });
+
+        container.appendChild(fragment);
+    }
+
     // 95 -> "1d 35sn", 3725 -> "1s 2d"
     function formatDuration(totalSeconds) {
         if (totalSeconds === null || totalSeconds === undefined) return '—';
@@ -80,7 +115,10 @@ window.dm = (function () {
         relativeTime: relativeTime,
         startElapsedTicker: startElapsedTicker,
         setConnectionStatus: setConnectionStatus,
-        meta: meta
+        meta: meta,
+        cleanAnsi: cleanAnsi,
+        classifyLogLine: classifyLogLine,
+        renderLogLines: renderLogLines
     };
 })();
 

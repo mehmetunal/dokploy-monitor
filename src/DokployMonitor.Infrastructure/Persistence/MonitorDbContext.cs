@@ -1,12 +1,19 @@
 using System.Globalization;
 using DokployMonitor.Core.Deployments;
 using DokployMonitor.Core.Notifications;
+using DokployMonitor.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace DokployMonitor.Infrastructure.Persistence;
 
-public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options) : DbContext(options)
+/// <summary>
+/// Izleme verisi + panel kullanicilari (ASP.NET Core Identity) ayni SQLite dosyasinda.
+/// Sema FluentMigrator ile yonetilir; buradaki eslemeler yalnizca sorgu tarafi icindir.
+/// </summary>
+public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
+    : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<TrackedDeployment> Deployments => Set<TrackedDeployment>();
     public DbSet<DeploymentEvent> DeploymentEvents => Set<DeploymentEvent>();
@@ -23,6 +30,9 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Identity tablolarinin (AspNetUsers, AspNetRoles, ...) eslemesi.
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<TrackedDeployment>(entity =>
         {
             entity.HasKey(d => d.DeploymentId);

@@ -1,10 +1,16 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Security;
+using System.Net.Sockets;
 using DokployMonitor.Core.Abstractions;
+using DokployMonitor.Infrastructure.Docker;
 using DokployMonitor.Infrastructure.Dokploy;
 using DokployMonitor.Infrastructure.Logs;
 using DokployMonitor.Infrastructure.Persistence;
+using DokployMonitor.Infrastructure.Persistence.Migrations;
+using DokployMonitor.Infrastructure.Validation;
+using FluentMigrator.Runner;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,13 +25,23 @@ public static class InfrastructureServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Validator'lar singleton: options dogrulamasi kok kapsamdan cozuluyor.
+        services.AddValidatorsFromAssemblyContaining<DokployOptionsValidator>(ServiceLifetime.Singleton);
+
         services.AddOptions<DokployOptions>()
             .Bind(configuration.GetSection(DokployOptions.SectionName))
-            .ValidateDataAnnotations()
+            .ValidateWithFluentValidation()
             .ValidateOnStart();
 
         services.AddOptions<LogOptions>()
-            .Bind(configuration.GetSection(LogOptions.SectionName));
+            .Bind(configuration.GetSection(LogOptions.SectionName))
+            .ValidateWithFluentValidation()
+            .ValidateOnStart();
+
+        services.AddOptions<DockerOptions>()
+            .Bind(configuration.GetSection(DockerOptions.SectionName))
+            .ValidateWithFluentValidation()
+            .ValidateOnStart();
 
         var dokployOptions = configuration.GetSection(DokployOptions.SectionName).Get<DokployOptions>() ?? new DokployOptions();
         var attemptTimeout = TimeSpan.FromSeconds(Math.Clamp(dokployOptions.TimeoutSeconds, 5, 120));
@@ -88,12 +104,47 @@ public static class InfrastructureServiceCollectionExtensions
         var connectionString = configuration.GetConnectionString("Default")
             ?? "Data Source=data/monitor.db";
 
+        // Sema FluentMigrator ile yonetiliyor; EF Core yalnizca sorgu/kayit katmani.
+        // Iki taraf ayni tablolari kullandigi icin sema testi zorunlu: bkz. MigrationSchemaTests.
+        services.AddFluentMigratorCore()
+            .ConfigureRunner(runner => runner
+                .AddSQLite()
+                .WithGlobalConnectionString(connectionString)
+                .ScanIn(typeof(InitialSchema).Assembly).For.Migrations())
+            .AddLogging(logging => logging.AddFluentMigratorConsole());
+
         services.AddDbContextFactory<MonitorDbContext>(options => options.UseSqlite(connectionString));
 
         // Controller/servisler icin scoped DbContext; worker'lar factory'yi dogrudan kullanir.
         services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<MonitorDbContext>>().CreateDbContext());
 
         services.AddSingleton<IDeploymentLogReader, FileDeploymentLogReader>();
+
+        // Container loglari (docker logs karsiligi) Engine API'sinden unix soketi uzerinden okunur.
+        services.AddHttpClient(DockerLogReader.HttpClientName, client =>
+            {
+                // Unix soketinde host adi anlamsiz; yalnizca yol kismi kullanilir.
+                client.BaseAddress = new Uri("http://docker/");
+            })
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+            {
+                var dockerOptions = sp.GetRequiredService<IOptions<DockerOptions>>().Value;
+
+                return new SocketsHttpHandler
+                {
+                    ConnectCallback = async (_, cancellationToken) =>
+                    {
+                        var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+                        await socket.ConnectAsync(
+                            new UnixDomainSocketEndPoint(dockerOptions.SocketPath),
+                            cancellationToken);
+
+                        return new NetworkStream(socket, ownsSocket: true);
+                    },
+                };
+            });
+
+        services.AddSingleton<IContainerLogReader, DockerLogReader>();
 
         return services;
     }

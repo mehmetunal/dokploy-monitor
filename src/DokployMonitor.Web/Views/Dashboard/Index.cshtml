@@ -1,0 +1,127 @@
+@model DokployMonitor.Core.Dashboard.DashboardSnapshot
+@{
+    ViewData["Title"] = "Canli Pano";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 mb-1">Deployment Panosu</h1>
+        <div id="sync-info" class="small text-secondary">Senkronizasyon bekleniyor…</div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+        <div class="stat-card accent-running">
+            <div class="stat-label">Calisan</div>
+            <div class="stat-value" id="stat-running">0</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-label">Kuyrukta</div>
+            <div class="stat-value" id="stat-queued">0</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card accent-done">
+            <div class="stat-label">24s Basarili</div>
+            <div class="stat-value" id="stat-succeeded">0</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card accent-error">
+            <div class="stat-label">24s Hatali</div>
+            <div class="stat-value" id="stat-failed">0</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-label">Ort. Sure (24s)</div>
+            <div class="stat-value" id="stat-avg">—</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-label">En Uzun Suren</div>
+            <div class="stat-value fs-6 pt-2" id="stat-longest">—</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header">Aktif Deploymentlar</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:7rem">Durum</th>
+                            <th>Servis</th>
+                            <th style="width:7rem">Tip</th>
+                            <th style="width:11rem">Baslangic</th>
+                            <th style="width:8rem">Gecen Sure</th>
+                            <th style="width:6rem"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="active-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span>Son Deploymentlar</span>
+                <a class="text-decoration-none small text-secondary" asp-controller="Deployments" asp-action="Index">tumunu gor →</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:7rem">Durum</th>
+                            <th>Servis</th>
+                            <th style="width:7rem">Tip</th>
+                            <th style="width:11rem">Zaman</th>
+                            <th style="width:7rem">Sure</th>
+                            <th>Hata</th>
+                            <th style="width:6rem"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-3" id="queue-card">
+            <div class="card-header">Kuyruk (Sirada Bekleyenler)</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:3.5rem">Sira</th>
+                            <th>Servis</th>
+                            <th style="width:5.5rem">Tur</th>
+                            <th style="width:7rem">Eklendi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="queue-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Webhook Bildirimleri</div>
+            <ul class="list-group list-group-flush" id="notification-list"></ul>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.__initialSnapshot = @Html.Raw(Json.Serialize(Model));
+    </script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+}

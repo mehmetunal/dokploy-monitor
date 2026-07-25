@@ -1,0 +1,191 @@
+@model DokployMonitor.Web.Models.DeploymentDetailsViewModel
+@using DokployMonitor.Core.Deployments
+@{
+    var d = Model.Deployment;
+    ViewData["Title"] = $"{d.DisplayName} · Deployment";
+
+    string StatusCss(DeploymentStatus status) => status switch
+    {
+        DeploymentStatus.Running => "status-running",
+        DeploymentStatus.Done => "status-done",
+        DeploymentStatus.Error => "status-error",
+        DeploymentStatus.Cancelled => "status-cancelled",
+        _ => "status-unknown",
+    };
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="h4 mb-1">
+            @d.DisplayName
+            <span class="status-badge @StatusCss(d.Status) ms-2">@d.Status.ToString().ToLowerInvariant()</span>
+        </h1>
+        <div class="small text-secondary">
+            @d.ProjectName @(d.EnvironmentName is null ? "" : "/ " + d.EnvironmentName) · @d.ServiceType
+            @if (d.IsPreviewDeployment)
+            {
+                <span class="badge text-bg-secondary">preview</span>
+            }
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        @if (d.Status.IsActive())
+        {
+            <form asp-action="Kill" asp-route-id="@d.DeploymentId" method="post"
+                  onsubmit="return confirm('Bu deployment durdurulacak. Emin misiniz?');">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-sm btn-outline-danger" type="submit">Durdur</button>
+            </form>
+        }
+        @if (d.ApplicationId is not null || d.ComposeId is not null)
+        {
+            <form asp-action="Redeploy" asp-route-id="@d.DeploymentId" method="post"
+                  onsubmit="return confirm('Servis yeniden deploy edilecek. Emin misiniz?');">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-sm btn-outline-light" type="submit">Yeniden Deploy</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Build Logu</span>
+                <div class="d-flex gap-3 align-items-center">
+                    <span id="log-status" class="small text-secondary"></span>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="autoscroll" checked>
+                        <label class="form-check-label small" for="autoscroll">Otomatik kaydir</label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-2">
+                @if (!Model.Log.Available)
+                {
+                    <div class="alert alert-warning py-2 mb-0 small">
+                        @(Model.Log.UnavailableReason ?? "Log okunamiyor.")
+                    </div>
+                }
+                else
+                {
+                    <div class="log-viewer" id="log-viewer">@foreach (var line in Model.Log.Lines)
+{<div class="log-line">@line</div>}</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">Ozet</div>
+            <div class="card-body small">
+                <dl class="row mb-0">
+                    <dt class="col-5 text-secondary">Baslik</dt>
+                    <dd class="col-7">@(d.Title ?? "—")</dd>
+
+                    <dt class="col-5 text-secondary">Olusturuldu</dt>
+                    <dd class="col-7">@d.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</dd>
+
+                    <dt class="col-5 text-secondary">Basladi</dt>
+                    <dd class="col-7">@(d.StartedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss") ?? "—")</dd>
+
+                    <dt class="col-5 text-secondary">Bitti</dt>
+                    <dd class="col-7">@(d.FinishedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss") ?? "—")</dd>
+
+                    <dt class="col-5 text-secondary">Sure</dt>
+                    <dd class="col-7">
+                        @if (d.Status.IsActive())
+                        {
+                            <span data-elapsed-from="@(d.StartedAt ?? d.CreatedAt)">—</span>
+                        }
+                        else
+                        {
+                            @(d.DurationSeconds is null ? "—" : TimeSpan.FromSeconds(d.DurationSeconds.Value).ToString(@"hh\:mm\:ss"))
+                        }
+                    </dd>
+
+                    <dt class="col-5 text-secondary">Sunucu</dt>
+                    <dd class="col-7">@(d.ServerName ?? "yerel")</dd>
+
+                    <dt class="col-5 text-secondary">Deployment ID</dt>
+                    <dd class="col-7"><code class="small">@d.DeploymentId</code></dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(d.ErrorMessage))
+        {
+            <div class="card mb-3 border-danger-subtle">
+                <div class="card-header text-danger">Hata Mesaji</div>
+                <div class="card-body">
+                    <pre class="small mb-0 text-danger" style="white-space:pre-wrap">@d.ErrorMessage</pre>
+                    @if (d.ErrorSignatureHash is not null)
+                    {
+                        <a class="small" asp-controller="Errors" asp-action="Signature" asp-route-hash="@d.ErrorSignatureHash">
+                            Ayni hatayi veren diger deploymentlar →
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card mb-3">
+            <div class="card-header">Olay Gecmisi</div>
+            <div class="card-body">
+                @if (Model.Events.Count == 0)
+                {
+                    <div class="text-secondary small">Bu deployment izlemeye alinmadan once tamamlanmis.</div>
+                }
+                @foreach (var e in Model.Events)
+                {
+                    <div class="timeline-item">
+                        <div class="small">
+                            <strong>@e.EventType</strong>
+                            @if (e.FromStatus is not null)
+                            {
+                                <span class="text-secondary">@e.FromStatus → @e.ToStatus</span>
+                            }
+                        </div>
+                        <div class="small text-secondary">@e.OccurredAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (Model.History.Count > 0)
+        {
+            <div class="card">
+                <div class="card-header">Bu Servisin Son Deploymentlari</div>
+                <ul class="list-group list-group-flush small">
+                    @foreach (var h in Model.History)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center @(h.DeploymentId == d.DeploymentId ? "bg-body-secondary" : "")">
+                            <span>
+                                <span class="status-badge @StatusCss(h.Status)">@h.Status.ToString().ToLowerInvariant()</span>
+                                <a class="ms-2 text-decoration-none" asp-action="Details" asp-route-id="@h.DeploymentId">
+                                    @h.CreatedAt.ToLocalTime().ToString("dd.MM HH:mm")
+                                </a>
+                            </span>
+                            <span class="text-secondary">
+                                @(h.DurationSeconds is null ? "—" : TimeSpan.FromSeconds(h.DurationSeconds.Value).ToString(@"mm\:ss"))
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.__logStream = {
+            deploymentId: '@d.DeploymentId',
+            offset: @Model.Log.Offset,
+            live: @(Model.CanStreamLive ? "true" : "false")
+        };
+    </script>
+    <script src="~/js/deployment-log.js" asp-append-version="true"></script>
+}

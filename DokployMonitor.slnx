@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DokployMonitor.Core/DokployMonitor.Core.csproj" />
+    <Project Path="src/DokployMonitor.Infrastructure/DokployMonitor.Infrastructure.csproj" />
+    <Project Path="src/DokployMonitor.Web/DokployMonitor.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DokployMonitor.Tests/DokployMonitor.Tests.csproj" />
+  </Folder>
+</Solution>

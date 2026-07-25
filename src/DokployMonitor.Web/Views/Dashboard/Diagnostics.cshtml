@@ -1,0 +1,95 @@
+@model DokployMonitor.Core.Abstractions.DokployHealth
+@using Microsoft.Extensions.Options
+@using DokployMonitor.Infrastructure.Dokploy
+@using DokployMonitor.Infrastructure.Logs
+@inject IOptions<DokployOptions> DokployOptions
+@inject IOptions<LogOptions> LogOptions
+@{
+    ViewData["Title"] = "Tanilama";
+    var dokploy = DokployOptions.Value;
+    var logs = LogOptions.Value;
+
+    string Mark(bool ok) => ok ? "✔" : "✘";
+    string Tone(bool ok) => ok ? "text-success" : "text-danger";
+}
+
+<h1 class="h4 mb-3">Kurulum Tanilama</h1>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">Dokploy Baglantisi</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-6">Sunucuya erisim</dt>
+                    <dd class="col-6 @Tone(Model.IsReachable)">@Mark(Model.IsReachable)</dd>
+
+                    <dt class="col-6">API anahtari gecerli</dt>
+                    <dd class="col-6 @Tone(Model.IsAuthorized)">@Mark(Model.IsAuthorized)</dd>
+
+                    <dt class="col-6">deployment.allCentralized</dt>
+                    <dd class="col-6 @Tone(Model.SupportsCentralizedDeployments)">
+                        @Mark(Model.SupportsCentralizedDeployments)
+                        @if (!Model.SupportsCentralizedDeployments)
+                        {
+                            <span class="small text-secondary d-block">Servis servis toplama moduna dusulecek.</span>
+                        }
+                    </dd>
+
+                    <dt class="col-6">deployment.queueList</dt>
+                    <dd class="col-6 @Tone(Model.SupportsQueueList)">
+                        @Mark(Model.SupportsQueueList)
+                        @if (!Model.SupportsQueueList)
+                        {
+                            <span class="small text-secondary d-block">Kuyruk gorunumu devre disi kalir.</span>
+                        }
+                    </dd>
+                </dl>
+
+                @if (Model.Error is not null)
+                {
+                    <div class="alert alert-danger mt-3 mb-0 py-2 small">@Model.Error</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">Yapilandirma</div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-5">Dokploy URL</dt>
+                    <dd class="col-7">@(string.IsNullOrWhiteSpace(dokploy.BaseUrl) ? "(tanimli degil)" : dokploy.BaseUrl)</dd>
+
+                    <dt class="col-5">API anahtari</dt>
+                    <dd class="col-7">@(string.IsNullOrWhiteSpace(dokploy.ApiKey) ? "(tanimli degil)" : "•••• tanimli")</dd>
+
+                    <dt class="col-5">Log mount</dt>
+                    <dd class="col-7">
+                        @logs.MountPath
+                        @if (Directory.Exists(logs.MountPath))
+                        {
+                            <span class="text-success">✔</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger">✘ bulunamadi</span>
+                        }
+                    </dd>
+
+                    <dt class="col-5">Dokploy log koku</dt>
+                    <dd class="col-7">@logs.HostPath</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">Webhook Kurulumu</div>
+            <div class="card-body small text-secondary">
+                Dokploy → Settings → Notifications → Webhook altinda su URL'i tanimlayin:
+                <pre class="mt-2 mb-0"><code>@($"{Context.Request.Scheme}://{Context.Request.Host}/api/webhooks/dokploy?token=<TOKEN>")</code></pre>
+            </div>
+        </div>
+    </div>
+</div>

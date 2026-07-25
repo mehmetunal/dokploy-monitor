@@ -1,0 +1,169 @@
+:root {
+    --dm-running: #38bdf8;
+    --dm-done: #22c55e;
+    --dm-error: #ef4444;
+    --dm-cancelled: #a1a1aa;
+}
+
+body {
+    font-size: 0.925rem;
+}
+
+.brand-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--dm-running);
+    margin-right: .35rem;
+    box-shadow: 0 0 8px var(--dm-running);
+}
+
+/* ---------------------------------------------------------- Ozet kartlar */
+.stat-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: .5rem;
+    padding: .85rem 1rem;
+    height: 100%;
+}
+
+.stat-card .stat-label {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--bs-secondary-color);
+}
+
+.stat-card .stat-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.stat-card.accent-running .stat-value { color: var(--dm-running); }
+.stat-card.accent-error .stat-value { color: var(--dm-error); }
+.stat-card.accent-done .stat-value { color: var(--dm-done); }
+
+/* -------------------------------------------------------- Durum rozetleri */
+.status-badge {
+    display: inline-block;
+    min-width: 5.5rem;
+    text-align: center;
+    padding: .15rem .5rem;
+    border-radius: .3rem;
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.status-running {
+    background: rgba(56, 189, 248, .15);
+    color: var(--dm-running);
+    animation: dm-pulse 1.8s ease-in-out infinite;
+}
+
+.status-done { background: rgba(34, 197, 94, .15); color: var(--dm-done); }
+.status-error { background: rgba(239, 68, 68, .18); color: var(--dm-error); }
+.status-cancelled { background: rgba(161, 161, 170, .15); color: var(--dm-cancelled); }
+.status-unknown { background: rgba(161, 161, 170, .1); color: var(--dm-cancelled); }
+
+@keyframes dm-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .status-running { animation: none; }
+}
+
+/* --------------------------------------------------------------- Tablolar */
+.table {
+    margin-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+    padding: .5rem .65rem;
+    vertical-align: middle;
+}
+
+.table thead th {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+}
+
+.row-running { background: rgba(56, 189, 248, .05); }
+.row-failed { background: rgba(239, 68, 68, .05); }
+
+.error-cell code {
+    color: #fca5a5;
+    font-size: .78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 38rem;
+}
+
+.queue-position {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background: rgba(161, 161, 170, .18);
+    font-weight: 600;
+    font-size: .8rem;
+}
+
+.card-header {
+    font-weight: 600;
+    font-size: .85rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+/* ----------------------------------------------------------- Log goruntusu */
+.log-viewer {
+    background: #0b0f14;
+    border: 1px solid var(--bs-border-color);
+    border-radius: .4rem;
+    padding: .75rem 1rem;
+    height: 65vh;
+    overflow-y: auto;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    font-size: .78rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.log-line {
+    color: #cbd5e1;
+}
+
+.log-line.log-error { color: #fca5a5; }
+.log-line.log-warn { color: #fcd34d; }
+.log-line.log-success { color: #86efac; }
+
+.timeline-item {
+    border-left: 2px solid var(--bs-border-color);
+    padding: 0 0 .85rem 1rem;
+    margin-left: .35rem;
+    position: relative;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: .35rem;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bs-secondary-color);
+}

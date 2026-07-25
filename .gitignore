@@ -1,0 +1,12 @@
+bin/
+obj/
+data/
+.DS_Store
+*.user
+*.db
+*.db-shm
+*.db-wal
+.vs/
+.vscode/
+.idea/
+appsettings.Local.json

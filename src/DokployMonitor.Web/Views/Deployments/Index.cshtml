@@ -1,0 +1,103 @@
+@model DokployMonitor.Web.Models.DeploymentHistoryViewModel
+@using DokployMonitor.Core.Deployments
+@{
+    ViewData["Title"] = "Deployment Gecmisi";
+
+    string StatusCss(DeploymentStatus status) => status switch
+    {
+        DeploymentStatus.Running => "status-running",
+        DeploymentStatus.Done => "status-done",
+        DeploymentStatus.Error => "status-error",
+        DeploymentStatus.Cancelled => "status-cancelled",
+        _ => "status-unknown",
+    };
+
+    string StatusLabel(DeploymentStatus status) => status switch
+    {
+        DeploymentStatus.Running => "calisiyor",
+        DeploymentStatus.Done => "basarili",
+        DeploymentStatus.Error => "HATA",
+        DeploymentStatus.Cancelled => "iptal",
+        _ => "bilinmiyor",
+    };
+}
+
+<h1 class="h4 mb-3">Deployment Gecmisi</h1>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-3">
+        <select class="form-select form-select-sm" name="project">
+            <option value="">Tum projeler</option>
+            @foreach (var project in Model.Projects)
+            {
+                <option value="@project" selected="@(project == Model.SelectedProject)">@project</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select form-select-sm" name="status">
+            <option value="">Tum durumlar</option>
+            <option value="running" selected="@(Model.SelectedStatus == "running")">Calisiyor</option>
+            <option value="done" selected="@(Model.SelectedStatus == "done")">Basarili</option>
+            <option value="error" selected="@(Model.SelectedStatus == "error")">Hatali</option>
+            <option value="cancelled" selected="@(Model.SelectedStatus == "cancelled")">Iptal</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <input class="form-control form-control-sm" name="q" value="@Model.Query" placeholder="Servis, proje veya hata metni ara" />
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-sm btn-outline-light w-100" type="submit">Filtrele</button>
+    </div>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width:7rem">Durum</th>
+                    <th>Servis</th>
+                    <th style="width:8rem">Proje</th>
+                    <th style="width:7rem">Tip</th>
+                    <th style="width:11rem">Zaman</th>
+                    <th style="width:7rem">Sure</th>
+                    <th>Hata</th>
+                    <th style="width:6rem"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Deployments.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-center text-secondary py-4">Kayit bulunamadi.</td></tr>
+                }
+                @foreach (var d in Model.Deployments)
+                {
+                    <tr class="@(d.Status.IsFailure() ? "row-failed" : "")">
+                        <td><span class="status-badge @StatusCss(d.Status)">@StatusLabel(d.Status)</span></td>
+                        <td>
+                            <div class="fw-semibold">@d.DisplayName</div>
+                            @if (d.EnvironmentName is not null)
+                            {
+                                <div class="small text-secondary">@d.EnvironmentName</div>
+                            }
+                        </td>
+                        <td class="text-secondary">@d.ProjectName</td>
+                        <td class="text-secondary">@d.ServiceType</td>
+                        <td>@d.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                        <td>@(d.DurationSeconds is null ? "—" : TimeSpan.FromSeconds(d.DurationSeconds.Value).ToString(@"hh\:mm\:ss"))</td>
+                        <td class="error-cell">
+                            @if (!string.IsNullOrWhiteSpace(d.ErrorMessage))
+                            {
+                                <code>@DokployMonitor.Core.Dashboard.DeploymentRow.Summarize(d.ErrorMessage)</code>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-light" asp-action="Details" asp-route-id="@d.DeploymentId">Detay</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

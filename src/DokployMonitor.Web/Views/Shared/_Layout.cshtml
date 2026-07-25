@@ -1,0 +1,51 @@
+@{
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+
+    string NavClass(string target) =>
+        string.Equals(controller, target, StringComparison.OrdinalIgnoreCase) ? "nav-link active" : "nav-link";
+}
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · Dokploy Monitor</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg border-bottom border-secondary-subtle mb-3">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-semibold" asp-controller="Dashboard" asp-action="Index">
+                <span class="brand-dot"></span> Dokploy Monitor
+            </a>
+            <div class="navbar-nav me-auto">
+                <a class="@NavClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">Canli Pano</a>
+                <a class="@NavClass("Deployments")" asp-controller="Deployments" asp-action="Index">Gecmis</a>
+                <a class="@NavClass("Errors")" asp-controller="Errors" asp-action="Index">Hata Analizi</a>
+                <a class="nav-link @(action == "Diagnostics" ? "active" : "")" asp-controller="Dashboard" asp-action="Diagnostics">Tanilama</a>
+            </div>
+            <div class="navbar-text small">
+                <span id="connection-status" class="badge text-bg-secondary">baglaniyor…</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container-fluid px-4 pb-5">
+        @if (TempData["Message"] is string message)
+        {
+            <div class="alert alert-success py-2">@message</div>
+        }
+        @if (TempData["Error"] is string error)
+        {
+            <div class="alert alert-danger py-2">@error</div>
+        }
+        @RenderBody()
+    </main>
+
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

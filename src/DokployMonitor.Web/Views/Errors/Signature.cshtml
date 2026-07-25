@@ -1,0 +1,52 @@
+@model IReadOnlyList<DokployMonitor.Core.Deployments.TrackedDeployment>
+@{
+    var signature = (DokployMonitor.Core.Deployments.ErrorSignature)ViewData["Signature"]!;
+    ViewData["Title"] = "Hata Imzasi";
+}
+
+<h1 class="h5 mb-2">Hata Imzasi</h1>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <code class="text-danger">@signature.NormalizedMessage</code>
+        <div class="small text-secondary mt-2">
+            @signature.OccurrenceCount kez goruldu ·
+            ilk: @signature.FirstSeenAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ·
+            son: @signature.LastSeenAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+        </div>
+        <details class="mt-2">
+            <summary class="small text-secondary">Ornek ham mesaj</summary>
+            <pre class="small mt-2 mb-0" style="white-space:pre-wrap">@signature.SampleMessage</pre>
+        </details>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Etkilenen Deploymentlar</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Servis</th>
+                    <th style="width:10rem">Proje</th>
+                    <th style="width:11rem">Zaman</th>
+                    <th style="width:6rem"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var d in Model)
+                {
+                    <tr>
+                        <td class="fw-semibold">@d.DisplayName</td>
+                        <td class="text-secondary">@d.ProjectName</td>
+                        <td>@d.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-light"
+                               asp-controller="Deployments" asp-action="Details" asp-route-id="@d.DeploymentId">Detay</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -169,6 +169,39 @@ body {
     letter-spacing: .04em;
 }
 
+/* --------------------------------------------------- Aydinlik tema farklari
+   Bootstrap renkleri data-bs-theme ile kendiliginden degisiyor; burada yalnizca
+   kendi ozel bilesenlerimizin koyu-varsayilan degerleri aydinliga cevriliyor. */
+[data-bs-theme="light"] {
+    --dm-running: #0284c7;
+    --dm-done: #15803d;
+    --dm-error: #b91c1c;
+    --dm-cancelled: #6b7280;
+}
+
+[data-bs-theme="light"] .log-viewer {
+    background: #f8fafc;
+}
+
+[data-bs-theme="light"] .log-line { color: #1f2937; }
+[data-bs-theme="light"] .log-line.log-error { color: #b91c1c; }
+[data-bs-theme="light"] .log-line.log-warn { color: #92400e; }
+[data-bs-theme="light"] .log-line.log-success { color: #15803d; }
+
+[data-bs-theme="light"] .brand-suffix {
+    color: #475569;
+}
+
+[data-bs-theme="light"] .login-body {
+    background: #f1f5f9;
+}
+
+/* Koyu temada okunur duran "text-bg-dark" rozeti aydinlikta ters donuyor. */
+[data-bs-theme="light"] .badge.text-bg-dark {
+    background-color: #e2e8f0 !important;
+    color: #1f2937 !important;
+}
+
 /* ----------------------------------------------------------- Log goruntusu */
 .log-viewer {
     background: #0b0f14;
@@ -208,4 +241,81 @@ body {
     height: 8px;
     border-radius: 50%;
     background: var(--bs-secondary-color);
+}
+
+/* Dil listesi 17 dile ulastigi icin acilir menu kaydirilabilir. */
+.dropdown-menu.language-menu {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* ------------------------------------------------------------------ Mobil
+   Panel telefonda da kullanilabilir olmali: yatay kaydirma yok, dokunma
+   hedefleri buyuk, log alani ekrana gore kisalir. */
+.brand-logo {
+    height: 28px;
+}
+
+@media (max-width: 991.98px) {
+    /* Katlanan menude linkler alt alta ve dokunulabilir yukseklikte. */
+    .navbar-collapse .navbar-nav {
+        flex-direction: column;
+        gap: .15rem;
+        padding-block: .5rem;
+    }
+
+    .navbar-collapse .nav-link {
+        padding-block: .5rem;
+    }
+
+    /* Filtre formlari tek kolona duser; alanlar tam genislik. */
+    .card-body .row > [class*="col-"] {
+        margin-bottom: .25rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body {
+        font-size: .9rem;
+    }
+
+    main.container-fluid {
+        padding-inline: .75rem !important;
+    }
+
+    /* Gostergeler telefonda iki sutun; deger boyutu kucultuluyor. */
+    .stat-card {
+        padding: .6rem .75rem;
+    }
+
+    .stat-card .stat-value {
+        font-size: 1.35rem;
+    }
+
+    /* Log alani ekranin yarisini gecmesin. */
+    .log-viewer {
+        height: 45vh;
+        font-size: .72rem;
+    }
+
+    /* Hata metni tabloda tasmasin. */
+    .error-cell code {
+        max-width: 14rem;
+    }
+
+    /* Modal telefonda tam genislik. */
+    .modal-dialog {
+        margin: .5rem;
+    }
+
+    /* Durum rozeti daha az yer kaplasin. */
+    .status-badge {
+        min-width: 4.5rem;
+        font-size: .7rem;
+    }
+
+    /* Tablolarda satir yuksekligi dokunma icin yeterli. */
+    .table > :not(caption) > * > * {
+        padding: .55rem .5rem;
+    }
 }

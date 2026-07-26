@@ -1,5 +1,6 @@
 using DokployMonitor.Infrastructure;
 using DokployMonitor.Infrastructure.Identity;
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Infrastructure.Persistence;
 using DokployMonitor.Infrastructure.Validation;
 using DokployMonitor.Web.Filters;
@@ -86,12 +87,16 @@ builder.Services.AddScoped<DeploymentSyncService>();
 builder.Services.AddHostedService<DeploymentSyncWorker>();
 builder.Services.AddHostedService<QueueSyncWorker>();
 builder.Services.AddHostedService<RetentionWorker>();
+builder.Services.AddHostedService<TranslationRefreshWorker>();
 
 builder.Services.AddControllersWithViews(options =>
 {
     // Varsayilan kimlik bilgileri degistirilmeden panelin hicbir yeri kullanilamaz.
     options.Filters.Add<RequireCredentialChangeFilter>();
-});
+})
+    // Ceviriler veritabanindan gelir (bkz. DatabaseStringLocalizerFactory).
+    .AddViewLocalization()
+    .AddDataAnnotationsLocalization();
 builder.Services.AddSignalR();
 builder.Services.AddHealthChecks().AddDbContextCheck<MonitorDbContext>();
 
@@ -106,6 +111,9 @@ await using (var seedScope = app.Services.CreateAsyncScope())
 
     // Ortam degiskenlerindeki tek baglanti varsa veritabanina tasi (geriye uyumluluk).
     await seedScope.ServiceProvider.GetRequiredService<ConnectionService>().ImportFromConfigurationAsync();
+
+    // Ceviriler: eksik olanlar eklenir, mevcut kayitlar korunur; sonra bellege yuklenir.
+    await seedScope.ServiceProvider.GetRequiredService<TranslationStore>().SeedAsync();
 }
 
 if (!app.Environment.IsDevelopment())
@@ -124,6 +132,9 @@ app.UseSerilogRequestLogging(options =>
         : httpContext.Request.Path.StartsWithSegments("/health") ? Serilog.Events.LogEventLevel.Verbose
         : Serilog.Events.LogEventLevel.Information;
 });
+
+// Dil secimi: cerez (kullanicinin secimi) → Accept-Language (sistem dili) → varsayilan.
+app.UseRequestLocalization(LocalizationSetup.Build());
 
 app.UseRouting();
 app.UseAuthentication();

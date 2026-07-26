@@ -1,7 +1,7 @@
 @model DokployMonitor.Web.Models.DeploymentHistoryViewModel
 @using DokployMonitor.Core.Deployments
 @{
-    ViewData["Title"] = "Deployment Gecmisi";
+    ViewData["Title"] = L["Deployment History"].Value;
 
     string StatusCss(DeploymentStatus status) => status switch
     {
@@ -14,15 +14,15 @@
 
     string StatusLabel(DeploymentStatus status) => status switch
     {
-        DeploymentStatus.Running => "calisiyor",
-        DeploymentStatus.Done => "basarili",
-        DeploymentStatus.Error => "HATA",
-        DeploymentStatus.Cancelled => "iptal",
-        _ => "bilinmiyor",
+        DeploymentStatus.Running => L["running"].Value,
+        DeploymentStatus.Done => L["succeeded"].Value,
+        DeploymentStatus.Error => L["ERROR"].Value,
+        DeploymentStatus.Cancelled => L["cancelled"].Value,
+        _ => L["unknown"].Value,
     };
 }
 
-<h1 class="h4 mb-3">Deployment Gecmisi</h1>
+<h1 class="h4 mb-3">@L["Deployment History"]</h1>
 
 @{
     var filter = Model.Filter;
@@ -32,9 +32,9 @@
     <div class="card-body py-2">
         <div class="row g-2 align-items-end">
             <div class="col-md-3">
-                <label class="form-label small text-secondary mb-1" for="f-project">Proje</label>
+                <label class="form-label small text-secondary mb-1" for="f-project">@L["Project"]</label>
                 <select class="form-select form-select-sm" id="f-project" name="project">
-                    <option value="">Tum projeler</option>
+                    <option value="">@L["All projects"]</option>
                     @foreach (var project in Model.Projects)
                     {
                         <option value="@project" selected="@(project == filter.Project)">@project</option>
@@ -42,37 +42,37 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small text-secondary mb-1" for="f-status">Durum</label>
+                <label class="form-label small text-secondary mb-1" for="f-status">@L["Status"]</label>
                 <select class="form-select form-select-sm" id="f-status" name="status">
-                    <option value="">Tum durumlar</option>
-                    <option value="running" selected="@(filter.Status == "running")">Calisiyor</option>
-                    <option value="done" selected="@(filter.Status == "done")">Basarili</option>
-                    <option value="error" selected="@(filter.Status == "error")">Hatali</option>
-                    <option value="cancelled" selected="@(filter.Status == "cancelled")">Iptal</option>
+                    <option value="">@L["All statuses"]</option>
+                    <option value="running" selected="@(filter.Status == "running")">@L["Running"]</option>
+                    <option value="done" selected="@(filter.Status == "done")">@L["Succeeded"]</option>
+                    <option value="error" selected="@(filter.Status == "error")">@L["Failed"]</option>
+                    <option value="cancelled" selected="@(filter.Status == "cancelled")">@L["Cancelled"]</option>
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small text-secondary mb-1" for="f-from">Baslangic</label>
+                <label class="form-label small text-secondary mb-1" for="f-from">@L["From"]</label>
                 <input class="form-control form-control-sm" type="date" id="f-from" name="from"
                        value="@(filter.From?.ToString("yyyy-MM-dd"))" />
             </div>
             <div class="col-md-2">
-                <label class="form-label small text-secondary mb-1" for="f-to">Bitis</label>
+                <label class="form-label small text-secondary mb-1" for="f-to">@L["To"]</label>
                 <input class="form-control form-control-sm" type="date" id="f-to" name="to"
                        value="@(filter.To?.ToString("yyyy-MM-dd"))" />
             </div>
             <div class="col-md-3">
-                <label class="form-label small text-secondary mb-1" for="f-q">Arama</label>
+                <label class="form-label small text-secondary mb-1" for="f-q">@L["Search"]</label>
                 <input class="form-control form-control-sm" id="f-q" name="q" value="@filter.Q"
-                       placeholder="Servis, proje veya hata metni" />
+                       placeholder="@L["Service, project or error text"]" />
             </div>
             @* Baglanti filtresi yalnizca birden fazla Dokploy sunucusu tanimliysa anlamli. *@
             @if (Model.ConnectionNames.Count > 1)
             {
                 <div class="col-md-3">
-                    <label class="form-label small text-secondary mb-1" for="f-connection">Sunucu (baglanti)</label>
+                    <label class="form-label small text-secondary mb-1" for="f-connection">@L["Server (connection)"]</label>
                     <select class="form-select form-select-sm" id="f-connection" name="connectionId">
-                        <option value="">Tum baglantilar</option>
+                        <option value="">@L["All connections"]</option>
                         @foreach (var (id, name) in Model.ConnectionNames.OrderBy(pair => pair.Value))
                         {
                             <option value="@id" selected="@(id == filter.ConnectionId)">@name</option>
@@ -82,11 +82,9 @@
             }
         </div>
         <div class="d-flex gap-2 mt-2">
-            <button class="btn btn-sm btn-outline-light" type="submit">Filtrele</button>
-            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Temizle</a>
-            <span class="ms-auto small text-secondary align-self-center">
-                @Model.Deployments.Count kayit@(filter.IsEmpty ? "" : " (filtreli)")
-            </span>
+            <button class="btn btn-sm btn-outline-light" type="submit">@L["Filter"]</button>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">@L["Clear"]</a>
+            
         </div>
     </div>
 </form>
@@ -103,20 +101,20 @@
         <table class="table table-sm align-middle mb-0">
             <thead>
                 <tr>
-                    <th style="width:7rem">Durum</th>
-                    <th>Servis</th>
-                    <th style="width:8rem">Proje</th>
-                    <th style="width:7rem">Tip</th>
-                    <th style="width:11rem">Zaman</th>
-                    <th style="width:7rem">Sure</th>
-                    <th>Hata</th>
-                    <th style="width:10rem">Log / Detay</th>
+                    <th style="width:7rem">@L["Status"]</th>
+                    <th>@L["Service"]</th>
+                    <th style="width:8rem" class="d-none d-lg-table-cell">@L["Project"]</th>
+                    <th style="width:7rem" class="d-none d-lg-table-cell">@L["Type"]</th>
+                    <th style="width:11rem">@L["Time"]</th>
+                    <th style="width:7rem">@L["Duration"]</th>
+                    <th class="d-none d-md-table-cell">@L["Error"]</th>
+                    <th style="width:10rem">@L["Log / Details"]</th>
                 </tr>
             </thead>
             <tbody>
                 @if (Model.Deployments.Count == 0)
                 {
-                    <tr><td colspan="8" class="text-center text-secondary py-4">Kayit bulunamadi.</td></tr>
+                    <tr><td colspan="8" class="text-center text-secondary py-4">@L["No records found."]</td></tr>
                 }
                 @foreach (var d in Model.Deployments)
                 {
@@ -137,11 +135,11 @@
                                 <div class="small text-secondary">@d.EnvironmentName</div>
                             }
                         </td>
-                        <td class="text-secondary">@d.ProjectName</td>
-                        <td class="text-secondary">@d.ServiceType</td>
+                        <td class="text-secondary d-none d-lg-table-cell">@d.ProjectName</td>
+                        <td class="text-secondary d-none d-lg-table-cell">@d.ServiceType</td>
                         <td>@d.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
                         <td>@(d.DurationSeconds is null ? "—" : TimeSpan.FromSeconds(d.DurationSeconds.Value).ToString(@"hh\:mm\:ss"))</td>
-                        <td class="error-cell">
+                        <td class="error-cell d-none d-md-table-cell">
                             @if (!string.IsNullOrWhiteSpace(d.ErrorMessage))
                             {
                                 <code>@DokployMonitor.Core.Dashboard.DeploymentRow.Summarize(d.ErrorMessage)</code>
@@ -151,9 +149,9 @@
                             @if (!string.IsNullOrWhiteSpace(d.LogPath) || !string.IsNullOrWhiteSpace(d.ArchivedLogPath))
                             {
                                 <button type="button" class="btn btn-sm btn-outline-info me-1"
-                                        data-log-preview="@d.DeploymentId" data-log-label="@d.DisplayName">Log</button>
+                                        data-log-preview="@d.DeploymentId" data-log-label="@d.DisplayName">@L["Log"]</button>
                             }
-                            <a class="btn btn-sm btn-outline-light" asp-action="Details" asp-route-id="@d.DeploymentId">Detay</a>
+                            <a class="btn btn-sm btn-outline-light" asp-action="Details" asp-route-id="@d.DeploymentId">@L["Details"]</a>
                         </td>
                     </tr>
                 }
@@ -161,3 +159,5 @@
         </table>
     </div>
 </div>
+
+@await Html.PartialAsync("_Pager", Model.Page)

@@ -27,11 +27,11 @@
     viewer.scrollTop = viewer.scrollHeight;
 
     if (!config.live) {
-        if (statusEl) statusEl.textContent = 'tamamlandi';
+        if (statusEl) statusEl.textContent = dm.t('completed');
         return;
     }
 
-    if (statusEl) statusEl.textContent = 'canli akis…';
+    if (statusEl) statusEl.textContent = dm.t('live stream…');
 
     const connection = new signalR.HubConnectionBuilder()
         .withUrl('/hubs/deployments')
@@ -40,19 +40,19 @@
 
     // Navbar rozetini bu sayfada log akisi yonetir; aksi halde "baglaniyor…" takili kalirdi.
     connection.onreconnecting(function () {
-        dm.setConnectionStatus('yeniden baglaniyor…', 'text-bg-warning');
+        dm.setConnectionStatus(dm.t('reconnecting…'), 'text-bg-warning');
     });
 
     connection.onreconnected(function () {
-        dm.setConnectionStatus('canli', 'text-bg-success');
+        dm.setConnectionStatus(dm.t('live'), 'text-bg-success');
     });
 
     connection.onclose(function () {
-        dm.setConnectionStatus('baglanti kapandi', 'text-bg-secondary');
+        dm.setConnectionStatus(dm.t('connection closed'), 'text-bg-secondary');
     });
 
     connection.start().then(function () {
-        dm.setConnectionStatus('canli', 'text-bg-success');
+        dm.setConnectionStatus(dm.t('live'), 'text-bg-success');
 
         connection.stream('StreamLogs', config.deploymentId, config.offset).subscribe({
             next: function (chunk) {
@@ -62,14 +62,14 @@
                 }
             },
             complete: function () {
-                if (statusEl) statusEl.textContent = 'akis kapandi';
+                if (statusEl) statusEl.textContent = dm.t('stream closed');
             },
             error: function () {
-                if (statusEl) statusEl.textContent = 'akis kesildi — sayfayi yenileyin';
+                if (statusEl) statusEl.textContent = dm.t('stream interrupted — refresh the page');
             }
         });
     }).catch(function () {
-        if (statusEl) statusEl.textContent = 'canli akis baslatilamadi';
-        dm.setConnectionStatus('baglanti kurulamadi', 'text-bg-warning');
+        if (statusEl) statusEl.textContent = dm.t('could not start live stream');
+        dm.setConnectionStatus(dm.t('could not connect'), 'text-bg-warning');
     });
 })();

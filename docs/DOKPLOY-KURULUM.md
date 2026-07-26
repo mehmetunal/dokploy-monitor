@@ -108,7 +108,15 @@ Logs__HostPath=/etc/dokploy/logs
 Monitor__IdlePollSeconds=15
 Monitor__ActivePollSeconds=2
 Monitor__RetentionDays=90
+
+# Onbellek: tek konteynerde Memory yeterli. Birden fazla ornek calisacaksa Redis:
+Cache__Provider=Memory
+# Cache__Provider=Redis
+# Cache__RedisConnectionString=redis:6379
 ```
+
+> Redis kullanacaksaniz Dokploy'da bir **Redis** servisi olusturup ayni `dokploy-network`
+> agina baglayin; adres olarak servis adini verin (or. `monitor-redis:6379`).
 
 Istege bagli:
 
@@ -225,6 +233,10 @@ Ayni sayfada log mount'unun durumu ve kopyalanabilir webhook URL'i de gosterilir
 | "Bu islem icin yetkiniz yok" | Hesap `Viewer` rolunde; Durdur/Yeniden Deploy/Replay ve kullanici-baglanti yonetimi `SuperAdmin` ister |
 | Container logu "Docker soketi bulunamadi" | Adim 6'daki 3. mount eksik |
 | Pano "1/2 baglanti okunamadi" diyor | Baglantilar ekranindan ilgili baglantiyi **Test** edin; adres/anahtar hatali ya da sunucu erisilemez |
+| Acilista `CacheOptions.RedisConnectionString` hatasi | `Cache__Provider=Redis` verilmis ama adres bos; adresi girin ya da `Provider=Memory` yapin |
+| Tanilama'da "Onbellek ✘" | Redis erisilemez. Uygulama calismaya devam eder (onbellek atlanir) ama Redis adresini/agini kontrol edin |
+| Panel yanlis dilde aciliyor | Dil sirasi: cerez → tarayici `Accept-Language` → Turkce. Navbar'daki dil secicisiyle sabitleyin |
+| Bir metin cevrilmemis gorunuyor | `/Translations` ekranindan (SuperAdmin) ilgili dili secip "Sadece cevrilmemisler" filtresiyle bulun; kaydettiginizde aninda uygulanir |
 | Tanilama: "Sunucuya erisim ✘" | `http://dokploy:3000` cozulemiyor → panelin public URL'ini kullanin |
 | Tanilama: "API anahtari gecerli ✘" (401/403) | Anahtar yanlis ya da yetkisi yetersiz |
 | Pano bos, hata yok | Henuz hic deployment yok ya da API anahtari baska bir organizasyona ait |

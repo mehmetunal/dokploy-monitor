@@ -2,6 +2,8 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using DokployMonitor.Core.Abstractions;
+using DokployMonitor.Infrastructure.Localization;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -19,6 +21,7 @@ namespace DokployMonitor.Infrastructure.Docker;
 /// baslik yoktur; bu durumda icerik ham metin olarak okunur.
 /// </summary>
 public sealed class DockerLogReader(
+    IStringLocalizer<SharedResource> text,
     IHttpClientFactory httpClientFactory,
     IOptions<DockerOptions> options,
     ILogger<DockerLogReader> logger) : IContainerLogReader
@@ -34,19 +37,17 @@ public sealed class DockerLogReader(
     {
         if (!_options.Enabled)
         {
-            return Unavailable("Container logu kapali (Docker:Enabled = false).");
+            return Unavailable(text["Container logs are disabled (Docker:Enabled = false)."]);
         }
 
         if (string.IsNullOrWhiteSpace(serviceOrContainerName))
         {
-            return Unavailable("Bu deployment icin servis/container adi bilinmiyor.");
+            return Unavailable(text["The service/container name for this deployment is unknown."]);
         }
 
         if (!File.Exists(_options.SocketPath))
         {
-            return Unavailable(
-                $"Docker soketi bulunamadi ({_options.SocketPath}). Konteynere "
-                + "/var/run/docker.sock:/var/run/docker.sock:ro mount'u ekleyin.");
+            return Unavailable(text["Docker socket not found ({0}). Add the mount /var/run/docker.sock:/var/run/docker.sock:ro to the container.", _options.SocketPath]);
         }
 
         var tail = Math.Clamp(maxLines, 1, _options.MaxTailLines);
@@ -70,9 +71,7 @@ public sealed class DockerLogReader(
 
         // Ikisi de olmadi: container denemesinin sebebi daha aciklayicidir (404 = yok).
         return container.NotFound && service.NotFound
-            ? Unavailable(
-                $"Docker'da '{serviceOrContainerName}' adli servis veya container bulunamadi. "
-                + "Servis silinmis olabilir ya da Monitor baska bir sunucuda calisiyor.")
+            ? Unavailable(text["No Docker service or container named '{0}'. It may have been removed, or Monitor runs on a different host.", serviceOrContainerName])
             : container.Result;
     }
 

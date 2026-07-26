@@ -1,33 +1,29 @@
 @model DokployMonitor.Web.Models.ErrorAnalysisViewModel
 @{
-    ViewData["Title"] = "Hata Analizi";
+    ViewData["Title"] = L["Error Analysis"].Value;
     var filter = Model.Filter;
 
     var dayLabels = new Dictionary<int, string>
     {
-        [0] = "Tum zamanlar",
-        [1] = "Son 24 saat",
-        [7] = "Son 7 gun",
-        [30] = "Son 30 gun",
-        [90] = "Son 90 gun",
-        [365] = "Son 1 yil",
+        [0] = L["All time"].Value,
+        [1] = L["Last 24 hours"].Value,
+        [7] = L["Last 7 days"].Value,
+        [30] = L["Last 30 days"].Value,
+        [90] = L["Last 90 days"].Value,
+        [365] = L["Last 1 year"].Value,
     };
 }
 
-<h1 class="h4 mb-1">Hata Analizi</h1>
-<p class="small text-secondary mb-3">
-    Hata mesajlari normalize edilerek (GUID, sayi, yol ve zaman damgalari temizlenerek) gruplanir;
-    boylece ayni kok neden farkli servislerde de olsa tek satirda gorunur.
-    Adet ve son gorulme degerleri asagidaki filtreye gore hesaplanir.
-</p>
+<h1 class="h4 mb-1">@L["Error Analysis"]</h1>
+<p class="small text-secondary mb-3">@L["Error messages are normalised (GUIDs, numbers, paths and timestamps are stripped) and grouped, so the same root cause appears on a single row even across different services. Counts and last-seen values are calculated from the filter below."]</p>
 
 <form method="get" class="card mb-3">
     <div class="card-body py-2">
         <div class="row g-2 align-items-end">
             <div class="col-md-4">
-                <label class="form-label small text-secondary mb-1" for="e-project">Proje</label>
+                <label class="form-label small text-secondary mb-1" for="e-project">@L["Project"]</label>
                 <select class="form-select form-select-sm" id="e-project" name="project">
-                    <option value="">Tum projeler</option>
+                    <option value="">@L["All projects"]</option>
                     @foreach (var project in Model.Projects)
                     {
                         <option value="@project" selected="@(project == filter.Project)">@project</option>
@@ -35,7 +31,7 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label small text-secondary mb-1" for="e-days">Zaman araligi</label>
+                <label class="form-label small text-secondary mb-1" for="e-days">@L["Time range"]</label>
                 <select class="form-select form-select-sm" id="e-days" name="days">
                     @foreach (var day in DokployMonitor.Web.Models.ErrorFilterValidator.AllowedDays)
                     {
@@ -44,10 +40,10 @@
                 </select>
             </div>
             <div class="col-md-5">
-                <button class="btn btn-sm btn-outline-light" type="submit">Filtrele</button>
-                <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Temizle</a>
+                <button class="btn btn-sm btn-outline-light" type="submit">@L["Filter"]</button>
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Index">@L["Clear"]</a>
                 <span class="small text-secondary ms-2">
-                    @Model.Signatures.Count hata grubu · @Model.RecentFailures.Count basarisiz deployment
+                    @L["{0} error groups", Model.Signatures.Count] · @L["{0} failed deployments", Model.RecentFailures.Count]
                 </span>
             </div>
         </div>
@@ -64,15 +60,15 @@
 <div class="row g-3">
     <div class="col-lg-7">
         <div class="card">
-            <div class="card-header">En Cok Tekrar Eden Hatalar</div>
+            <div class="card-header">@L["Most Frequent Errors"]</div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
-                            <th style="width:4rem">Adet</th>
-                            <th>Hata</th>
-                            <th style="width:9rem">Son Gorulme</th>
-                            <th style="width:5rem">Log</th>
+                            <th style="width:4rem">@L["Count"]</th>
+                            <th>@L["Error"]</th>
+                            <th style="width:9rem">@L["Last Seen"]</th>
+                            <th style="width:5rem">@L["Log"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -93,7 +89,7 @@
                                     @if (s.LastServiceName is not null)
                                     {
                                         <div class="small text-secondary">
-                                            son: @s.LastServiceName
+                                            @L["last"]: @s.LastServiceName
                                             @if (s.LastProjectName is not null)
                                             {
                                                 <span>· @s.LastProjectName</span>
@@ -107,7 +103,7 @@
                                     {
                                         <button type="button" class="btn btn-sm btn-outline-info"
                                                 data-log-preview="@s.LatestDeploymentId"
-                                                data-log-label="@s.LastServiceName">Log</button>
+                                                data-log-label="@s.LastServiceName">@L["Log"]</button>
                                     }
                                 </td>
                             </tr>
@@ -120,11 +116,11 @@
 
     <div class="col-lg-5">
         <div class="card">
-            <div class="card-header">Son Basarisiz Deploymentlar</div>
+            <div class="card-header">@L["Recent Failed Deployments"]</div>
             <ul class="list-group list-group-flush">
                 @if (Model.RecentFailures.Count == 0)
                 {
-                    <li class="list-group-item text-secondary">Kayit yok.</li>
+                    <li class="list-group-item text-secondary">@L["No records."]</li>
                 }
                 @foreach (var f in Model.RecentFailures)
                 {
@@ -138,7 +134,7 @@
                                 @if (!string.IsNullOrWhiteSpace(f.LogPath) || !string.IsNullOrWhiteSpace(f.ArchivedLogPath))
                                 {
                                     <button type="button" class="btn btn-sm btn-outline-info py-0 me-1"
-                                            data-log-preview="@f.DeploymentId" data-log-label="@f.DisplayName">Log</button>
+                                            data-log-preview="@f.DeploymentId" data-log-label="@f.DisplayName">@L["Log"]</button>
                                 }
                                 <span class="small text-secondary">@f.CreatedAt.ToLocalTime().ToString("dd.MM HH:mm")</span>
                             </span>

@@ -3,14 +3,17 @@ using System.Net.Http.Headers;
 using System.Net.Security;
 using System.Net.Sockets;
 using DokployMonitor.Core.Abstractions;
+using DokployMonitor.Infrastructure.Caching;
 using DokployMonitor.Infrastructure.Docker;
 using DokployMonitor.Infrastructure.Dokploy;
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Infrastructure.Logs;
 using DokployMonitor.Infrastructure.Persistence;
 using DokployMonitor.Infrastructure.Persistence.Migrations;
 using DokployMonitor.Infrastructure.Validation;
 using FluentMigrator.Runner;
 using FluentValidation;
+using Microsoft.Extensions.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +45,30 @@ public static class InfrastructureServiceCollectionExtensions
             .Bind(configuration.GetSection(DockerOptions.SectionName))
             .ValidateWithFluentValidation()
             .ValidateOnStart();
+
+        services.AddOptions<CacheOptions>()
+            .Bind(configuration.GetSection(CacheOptions.SectionName))
+            .ValidateWithFluentValidation()
+            .ValidateOnStart();
+
+        // Onbellek: Redis secilmisse dagitik, aksi halde bellek ici. Cagri yerleri
+        // her iki durumda da IDistributedCache/CacheService kullanir.
+        var cacheOptions = configuration.GetSection(CacheOptions.SectionName).Get<CacheOptions>() ?? new CacheOptions();
+
+        if (cacheOptions.UsesRedis)
+        {
+            services.AddStackExchangeRedisCache(redis =>
+            {
+                redis.Configuration = cacheOptions.RedisConnectionString;
+                redis.InstanceName = cacheOptions.InstanceName;
+            });
+        }
+        else
+        {
+            services.AddDistributedMemoryCache();
+        }
+
+        services.AddSingleton<CacheService>();
 
         var dokployOptions = configuration.GetSection(DokployOptions.SectionName).Get<DokployOptions>() ?? new DokployOptions();
         var attemptTimeout = TimeSpan.FromSeconds(Math.Clamp(dokployOptions.TimeoutSeconds, 5, 120));
@@ -147,6 +174,13 @@ public static class InfrastructureServiceCollectionExtensions
             });
 
         services.AddSingleton<IContainerLogReader, DockerLogReader>();
+
+        // Ceviriler veritabanindan gelir (resx yok): anlik goruntu singleton'da tutulur,
+        // localizer bunun uzerinden senkron okur.
+        services.AddSingleton<TranslationStore>();
+        services.AddSingleton<IStringLocalizerFactory, DatabaseStringLocalizerFactory>();
+        services.AddSingleton<IStringLocalizer, DatabaseStringLocalizer>();
+        services.AddSingleton(typeof(IStringLocalizer<>), typeof(DatabaseStringLocalizer<>));
 
         return services;
     }

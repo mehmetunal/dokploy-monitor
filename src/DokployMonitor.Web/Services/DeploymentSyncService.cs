@@ -5,6 +5,8 @@ using DokployMonitor.Infrastructure.Persistence;
 using DokployMonitor.Web.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using DokployMonitor.Infrastructure.Localization;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace DokployMonitor.Web.Services;
@@ -25,6 +27,7 @@ public sealed class DeploymentSyncService(
     MonitorState state,
     IOptions<Web.Options.MonitorOptions> monitorOptions,
     IOptions<LogOptions> logOptions,
+    IStringLocalizer<SharedResource> text,
     ILogger<DeploymentSyncService> logger)
 {
     /// <summary>SQLite parametre sinirina takilmamak icin IN sorgularini parcala.</summary>
@@ -38,7 +41,7 @@ public sealed class DeploymentSyncService(
         var connections = await connectionService.GetEnabledAsync(ct);
         if (connections.Count == 0)
         {
-            const string reason = "Tanimli ve etkin Dokploy baglantisi yok.";
+            var reason = text["No enabled Dokploy connection is configured."].Value;
             state.LastSyncError = reason;
             await BroadcastAsync(ct);
             return new SyncResult(0, 0, true, reason);
@@ -107,7 +110,8 @@ public sealed class DeploymentSyncService(
 
         // Kismi hata korunur: bir baglanti bozukken pano "her sey yolunda" gostermemeli.
         state.LastSyncError = failures.Count > 0
-            ? $"{failures.Count}/{connections.Count} baglanti okunamadi — {string.Join(" | ", failures)}"
+            ? text["{0}/{1} connections could not be read — {2}",
+                failures.Count, connections.Count, string.Join(" | ", failures)].Value
             : null;
 
         var activeCount = incoming.Count(d => d.Status.IsActive());

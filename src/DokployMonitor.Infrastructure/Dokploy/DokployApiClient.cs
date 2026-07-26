@@ -5,6 +5,8 @@ using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Core.Deployments;
 using DokployMonitor.Core.Dokploy;
 using DokployMonitor.Core.Queueing;
+using DokployMonitor.Infrastructure.Localization;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace DokployMonitor.Infrastructure.Dokploy;
@@ -26,6 +28,7 @@ namespace DokployMonitor.Infrastructure.Dokploy;
 public sealed class DokployApiClient(
     HttpClient httpClient,
     DokployConnection connection,
+    IStringLocalizer<SharedResource> text,
     ILogger<DokployApiClient> logger) : IDokployClient
 {
     /// <summary>Bu istemcinin bagli oldugu Dokploy baglantisi.</summary>
@@ -63,7 +66,7 @@ public sealed class DokployApiClient(
     {
         if (_supportsQueueList == false)
         {
-            return Unavailable("Bu Dokploy surumu deployment.queueList endpoint'ini desteklemiyor.");
+            return Unavailable(text["This Dokploy version does not support the deployment.queueList endpoint."]);
         }
 
         var (ok, root) = await TryGetJsonAsync("deployment.queueList", ct);
@@ -75,7 +78,7 @@ public sealed class DokployApiClient(
             }
 
             _supportsQueueList = false;
-            return Unavailable("Kuyruk bilgisi Dokploy'dan alinamadi (endpoint yok veya yetki yetersiz).");
+            return Unavailable(text["Queue information could not be read from Dokploy (endpoint missing or insufficient permission)."]);
         }
 
         _supportsQueueList = true;
@@ -83,7 +86,7 @@ public sealed class DokployApiClient(
 
         return new QueueSnapshot { Jobs = jobs, CapturedAt = DateTimeOffset.UtcNow };
 
-        static QueueSnapshot Unavailable(string reason) => new()
+        QueueSnapshot Unavailable(string reason) => new()
         {
             Jobs = [],
             CapturedAt = DateTimeOffset.UtcNow,
@@ -120,12 +123,14 @@ public sealed class DokployApiClient(
 
             if (!authorized)
             {
-                return new DokployHealth(true, false, false, false, $"API anahtari reddedildi ({(int)response.StatusCode}).");
+                return new DokployHealth(true, false, false, false,
+                    text["The API key was rejected ({0}).", (int)response.StatusCode]);
             }
 
             if (!response.IsSuccessStatusCode)
             {
-                return new DokployHealth(true, true, false, false, $"project.all beklenmeyen yanit verdi ({(int)response.StatusCode}).");
+                return new DokployHealth(true, true, false, false,
+                    text["project.all returned an unexpected response ({0}).", (int)response.StatusCode]);
             }
 
             var (centralized, _) = await TryGetJsonAsync("deployment.allCentralized", ct);
@@ -174,7 +179,7 @@ public sealed class DokployApiClient(
         {
             var detail = await response.Content.ReadAsStringAsync(ct);
             throw new DokployApiException(
-                $"Dokploy {path} cagrisi basarisiz oldu ({(int)response.StatusCode}): {Truncate(detail, 500)}");
+                text["The Dokploy {0} call failed ({1}): {2}", path, (int)response.StatusCode, Truncate(detail, 500)]);
         }
     }
 
@@ -185,7 +190,8 @@ public sealed class DokployApiClient(
         var (ok, projectsRoot) = await TryGetJsonAsync("project.all", ct);
         if (!ok)
         {
-            throw new DokployApiException("project.all okunamadi; Dokploy'a erisilemiyor veya API anahtari gecersiz.");
+            throw new DokployApiException(
+                text["Could not read project.all; Dokploy is unreachable or the API key is invalid."]);
         }
 
         var services = EnumerateServices(projectsRoot).ToList();

@@ -1,6 +1,7 @@
 using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Core.Dashboard;
 using DokployMonitor.Core.Dokploy;
+using DokployMonitor.Infrastructure.Caching;
 using DokployMonitor.Core.Deployments;
 
 namespace DokployMonitor.Web.Models;
@@ -10,6 +11,7 @@ public sealed class DeploymentHistoryViewModel
     public required IReadOnlyList<TrackedDeployment> Deployments { get; init; }
     public required IReadOnlyList<string> Projects { get; init; }
     public required DeploymentFilter Filter { get; init; }
+    public required PageInfo Page { get; init; }
 
     /// <summary>Baglanti kimligi -> ad (filtre kutusu ve satir etiketleri icin).</summary>
     public required IReadOnlyDictionary<string, string> ConnectionNames { get; init; }
@@ -44,6 +46,7 @@ public sealed class DiagnosticsViewModel
 {
     public required IReadOnlyList<ConnectionHealth> Connections { get; init; }
     public required ContainerLogHealth Docker { get; init; }
+    public required CacheHealth Cache { get; init; }
 }
 
 public sealed class ErrorAnalysisViewModel

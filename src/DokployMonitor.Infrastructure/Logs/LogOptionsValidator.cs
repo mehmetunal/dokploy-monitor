@@ -1,30 +1,32 @@
+using DokployMonitor.Infrastructure.Localization;
 using FluentValidation;
+using Microsoft.Extensions.Localization;
 
 namespace DokployMonitor.Infrastructure.Logs;
 
 /// <summary>`Logs` bolumunun dogrulamasi.</summary>
 public sealed class LogOptionsValidator : AbstractValidator<LogOptions>
 {
-    public LogOptionsValidator()
+    public LogOptionsValidator(IStringLocalizer<SharedResource> text)
     {
         RuleFor(options => options.MountPath)
             .NotEmpty()
-            .WithMessage("Dokploy log klasorunun konteyner icindeki mount noktasi zorunlu.");
+            .WithMessage(_ => text["The mount point of the Dokploy log folder inside the container is required."]);
 
         RuleFor(options => options.HostPath)
             .NotEmpty()
-            .WithMessage("Dokploy'un logPath degerlerindeki kok dizin zorunlu (varsayilan /etc/dokploy/logs).");
+            .WithMessage(_ => text["The root directory used in Dokploy logPath values is required (default /etc/dokploy/logs)."]);
 
         RuleFor(options => options.ArchivePath)
             .NotEmpty()
-            .WithMessage("Arsiv dizini zorunlu; hatali deployment loglari buraya kopyalanir.");
+            .WithMessage(_ => text["The archive directory is required; failed deployment logs are copied there."]);
 
         RuleFor(options => options.DefaultTailLines)
             .InclusiveBetween(50, 20_000)
-            .WithMessage("50-20000 satir arasinda olmali.");
+            .WithMessage(_ => text["Must be between 50 and 20000 lines."]);
 
         RuleFor(options => options.PollIntervalMs)
             .InclusiveBetween(100, 10_000)
-            .WithMessage("100-10000 ms arasinda olmali; daha kisa deger diski bosa yorar.");
+            .WithMessage(_ => text["Must be between 100 and 10000 ms; a shorter value wastes disk I/O."]);
     }
 }

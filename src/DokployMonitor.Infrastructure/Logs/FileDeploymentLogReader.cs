@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 using DokployMonitor.Core.Abstractions;
+using DokployMonitor.Infrastructure.Localization;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,6 +17,7 @@ namespace DokployMonitor.Infrastructure.Logs;
 /// mount edip dogrudan okumak hem daha basit hem de Traefik/HTTP2 WebSocket sorunlarindan bagimsiz.
 /// </summary>
 public sealed class FileDeploymentLogReader(
+    IStringLocalizer<SharedResource> text,
     IOptions<LogOptions> options,
     ILogger<FileDeploymentLogReader> logger) : IDeploymentLogReader
 {
@@ -41,7 +44,7 @@ public sealed class FileDeploymentLogReader(
         catch (IOException ex)
         {
             logger.LogWarning(ex, "Log dosyasi okunamadi: {Path}", resolved);
-            return new LogReadResult([], 0, false, "Log dosyasi okunamadi.");
+            return new LogReadResult([], 0, false, text["The log file could not be read."]);
         }
     }
 
@@ -132,7 +135,7 @@ public sealed class FileDeploymentLogReader(
 
         if (string.IsNullOrWhiteSpace(logPath))
         {
-            reason = "Bu deployment icin log yolu kayitli degil.";
+            reason = text["No log path was recorded for this deployment."];
             return false;
         }
 
@@ -159,7 +162,7 @@ public sealed class FileDeploymentLogReader(
 
         if (!File.Exists(candidate))
         {
-            reason = "Log dosyasi bulunamadi (Dokploy temizlemis olabilir).";
+            reason = text["Build log file not found. Dokploy may have cleaned it up, or the log folder is not mounted."];
             return false;
         }
 

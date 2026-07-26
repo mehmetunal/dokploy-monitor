@@ -1,4 +1,6 @@
+using DokployMonitor.Infrastructure.Localization;
 using FluentValidation;
+using Microsoft.Extensions.Localization;
 
 namespace DokployMonitor.Web.Options;
 
@@ -29,27 +31,27 @@ public sealed class AuthOptions
 
 public sealed class AuthOptionsValidator : AbstractValidator<AuthOptions>
 {
-    public AuthOptionsValidator()
+    public AuthOptionsValidator(IStringLocalizer<SharedResource> text)
     {
         RuleFor(options => options.AdminEmail)
-            .NotEmpty().WithMessage("Yonetici e-postasi zorunlu.")
-            .EmailAddress().WithMessage("Gecerli bir e-posta adresi olmali.");
+            .NotEmpty().WithMessage(_ => text["The administrator email is required."])
+            .EmailAddress().WithMessage(_ => text["Must be a valid email address."]);
 
         RuleFor(options => options.AdminDisplayName)
-            .NotEmpty().WithMessage("Yonetici adi zorunlu.")
+            .NotEmpty().WithMessage(_ => text["The administrator name is required."])
             .MaximumLength(100);
 
         RuleFor(options => options.MinimumPasswordLength)
             .InclusiveBetween(8, 64)
-            .WithMessage("8-64 arasinda olmali.");
+            .WithMessage(_ => text["Must be between 8 and 64."]);
 
         RuleFor(options => options.SessionDays)
             .InclusiveBetween(1, 365)
-            .WithMessage("1-365 gun arasinda olmali.");
+            .WithMessage(_ => text["Must be between 1 and 365 days."]);
 
         RuleFor(options => options.AdminPassword)
             .MinimumLength(8)
-            .WithMessage("Tanimliysa en az 8 karakter olmali; bos birakilirsa parola uretilir.")
+            .WithMessage(_ => text["If set it must be at least 8 characters; leave empty to generate one."])
             .When(options => !string.IsNullOrEmpty(options.AdminPassword));
     }
 }

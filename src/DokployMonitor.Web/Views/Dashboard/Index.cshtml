@@ -1,6 +1,6 @@
 @model DokployMonitor.Core.Dashboard.DashboardSnapshot
 @{
-    ViewData["Title"] = "Canli Pano";
+    ViewData["Title"] = L["Live Dashboard"].Value;
 
     // Navbar'daki baglanti rozetini bu sayfa yonetiyor (SignalR + polling yedegi).
     ViewData["ShowConnectionStatus"] = true;
@@ -8,45 +8,45 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h4 mb-1">Deployment Panosu</h1>
-        <div id="sync-info" class="small text-secondary">Senkronizasyon bekleniyor…</div>
+        <h1 class="h4 mb-1">@L["Deployment Dashboard"]</h1>
+        <div id="sync-info" class="small text-secondary">@L["Waiting for synchronisation…"]</div>
     </div>
 </div>
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-2">
         <div class="stat-card accent-running">
-            <div class="stat-label">Calisan</div>
+            <div class="stat-label">@L["Running"]</div>
             <div class="stat-value" id="stat-running">0</div>
         </div>
     </div>
     <div class="col-6 col-lg-2">
         <div class="stat-card">
-            <div class="stat-label">Kuyrukta</div>
+            <div class="stat-label">@L["Queued"]</div>
             <div class="stat-value" id="stat-queued">0</div>
         </div>
     </div>
     <div class="col-6 col-lg-2">
         <div class="stat-card accent-done">
-            <div class="stat-label">24s Basarili</div>
+            <div class="stat-label">@L["24h Succeeded"]</div>
             <div class="stat-value" id="stat-succeeded">0</div>
         </div>
     </div>
     <div class="col-6 col-lg-2">
         <div class="stat-card accent-error">
-            <div class="stat-label">24s Hatali</div>
+            <div class="stat-label">@L["24h Failed"]</div>
             <div class="stat-value" id="stat-failed">0</div>
         </div>
     </div>
     <div class="col-6 col-lg-2">
         <div class="stat-card">
-            <div class="stat-label">Ort. Sure (24s)</div>
+            <div class="stat-label">@L["Avg. duration (24h)"]</div>
             <div class="stat-value" id="stat-avg">—</div>
         </div>
     </div>
     <div class="col-6 col-lg-2">
         <div class="stat-card">
-            <div class="stat-label">En Uzun Suren</div>
+            <div class="stat-label">@L["Longest running"]</div>
             <div class="stat-value fs-6 pt-2" id="stat-longest">—</div>
         </div>
     </div>
@@ -57,22 +57,22 @@
     <div class="card-body py-2">
         <div class="row g-2 align-items-center">
             <div class="col-md-3">
-                <select id="filter-project" class="form-select form-select-sm" aria-label="Proje filtresi">
-                    <option value="">Tum projeler</option>
+                <select id="filter-project" class="form-select form-select-sm" aria-label="@L["Project filter"]">
+                    <option value="">@L["All projects"]</option>
                 </select>
             </div>
             <div class="col-md-4">
                 <input id="filter-text" class="form-control form-control-sm"
-                       placeholder="Servis, ortam veya hata metni ara" aria-label="Metin filtresi" />
+                       placeholder="@L["Search service, environment or error text"]" aria-label="@L["Text filter"]" />
             </div>
             <div class="col-md-3">
                 <div class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="filter-failed" />
-                    <label class="form-check-label small" for="filter-failed">Sadece hatalilar</label>
+                    <label class="form-check-label small" for="filter-failed">@L["Failed only"]</label>
                 </div>
             </div>
             <div class="col-md-2 text-md-end">
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="filter-clear">Filtreyi temizle</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="filter-clear">@L["Clear filter"]</button>
             </div>
         </div>
         <div class="small text-secondary mt-1" id="filter-info"></div>
@@ -82,17 +82,17 @@
 <div class="row g-3">
     <div class="col-lg-8">
         <div class="card mb-3">
-            <div class="card-header">Aktif Deploymentlar</div>
+            <div class="card-header">@L["Active Deployments"]</div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
-                            <th style="width:7rem">Durum</th>
-                            <th>Servis</th>
-                            <th style="width:7rem">Tip</th>
-                            <th style="width:11rem">Baslangic</th>
-                            <th style="width:8rem">Gecen Sure</th>
-                            <th style="width:10rem">Log / Detay</th>
+                            <th style="width:7rem">@L["Status"]</th>
+                            <th>@L["Service"]</th>
+                            <th style="width:7rem" class="d-none d-lg-table-cell">@L["Type"]</th>
+                            <th style="width:11rem">@L["From"]</th>
+                            <th style="width:8rem">@L["Elapsed"]</th>
+                            <th style="width:10rem">@L["Log / Details"]</th>
                         </tr>
                     </thead>
                     <tbody id="active-body"></tbody>
@@ -102,20 +102,20 @@
 
         <div class="card">
             <div class="card-header d-flex justify-content-between">
-                <span>Son Deploymentlar</span>
-                <a class="text-decoration-none small text-secondary" asp-controller="Deployments" asp-action="Index">tumunu gor →</a>
+                <span>@L["Recent Deployments"]</span>
+                <a class="text-decoration-none small text-secondary" asp-controller="Deployments" asp-action="Index">@L["view all →"]</a>
             </div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
-                            <th style="width:7rem">Durum</th>
-                            <th>Servis</th>
-                            <th style="width:7rem">Tip</th>
-                            <th style="width:11rem">Zaman</th>
-                            <th style="width:7rem">Sure</th>
-                            <th>Hata</th>
-                            <th style="width:10rem">Log / Detay</th>
+                            <th style="width:7rem">@L["Status"]</th>
+                            <th>@L["Service"]</th>
+                            <th style="width:7rem" class="d-none d-lg-table-cell">@L["Type"]</th>
+                            <th style="width:11rem" class="d-none d-md-table-cell">@L["Time"]</th>
+                            <th style="width:7rem">@L["Duration"]</th>
+                            <th class="d-none d-xl-table-cell">@L["Error"]</th>
+                            <th style="width:10rem">@L["Log / Details"]</th>
                         </tr>
                     </thead>
                     <tbody id="recent-body"></tbody>
@@ -126,15 +126,15 @@
 
     <div class="col-lg-4">
         <div class="card mb-3" id="queue-card">
-            <div class="card-header">Kuyruk (Sirada Bekleyenler)</div>
+            <div class="card-header">@L["Queue (Waiting)"]</div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
-                            <th style="width:3.5rem">Sira</th>
-                            <th>Servis</th>
-                            <th style="width:5.5rem">Tur</th>
-                            <th style="width:7rem">Eklendi</th>
+                            <th style="width:3.5rem">@L["Position"]</th>
+                            <th>@L["Service"]</th>
+                            <th style="width:5.5rem" class="d-none d-md-table-cell">@L["Kind"]</th>
+                            <th style="width:7rem">@L["Added"]</th>
                         </tr>
                     </thead>
                     <tbody id="queue-body"></tbody>
@@ -143,7 +143,7 @@
         </div>
 
         <div class="card">
-            <div class="card-header">Webhook Bildirimleri</div>
+            <div class="card-header">@L["Webhook Notifications"]</div>
             <ul class="list-group list-group-flush" id="notification-list"></ul>
         </div>
     </div>

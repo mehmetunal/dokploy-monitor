@@ -1,6 +1,8 @@
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Infrastructure.Identity;
 using DokployMonitor.Web.Options;
 using FluentValidation;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace DokployMonitor.Web.Models;
@@ -38,26 +40,26 @@ public sealed class CreateUserInput
 
 public sealed class CreateUserInputValidator : AbstractValidator<CreateUserInput>
 {
-    public CreateUserInputValidator(IOptions<AuthOptions> options)
+    public CreateUserInputValidator(IOptions<AuthOptions> options, IStringLocalizer<SharedResource> text)
     {
         var minimumLength = Math.Clamp(options.Value.MinimumPasswordLength, 8, 64);
 
         RuleFor(input => input.Email)
-            .NotEmpty().WithMessage("E-posta zorunlu.")
-            .EmailAddress().WithMessage("Gecerli bir e-posta adresi girin.");
+            .NotEmpty().WithMessage(_ => text["Email is required."])
+            .EmailAddress().WithMessage(_ => text["Enter a valid email address."]);
 
         RuleFor(input => input.DisplayName)
             .MaximumLength(100);
 
         RuleFor(input => input.Password)
-            .NotEmpty().WithMessage("Parola zorunlu.")
-            .MinimumLength(minimumLength).WithMessage($"En az {minimumLength} karakter olmali.")
-            .Matches("[A-Z]").WithMessage("En az bir buyuk harf icermeli.")
-            .Matches("[a-z]").WithMessage("En az bir kucuk harf icermeli.")
-            .Matches("[0-9]").WithMessage("En az bir rakam icermeli.");
+            .NotEmpty().WithMessage(_ => text["Password is required."])
+            .MinimumLength(minimumLength).WithMessage(_ => text["Must be at least {0} characters.", minimumLength])
+            .Matches("[A-Z]").WithMessage(_ => text["Must contain at least one upper case letter."])
+            .Matches("[a-z]").WithMessage(_ => text["Must contain at least one lower case letter."])
+            .Matches("[0-9]").WithMessage(_ => text["Must contain at least one digit."]);
 
         RuleFor(input => input.Role)
             .Must(MonitorRoles.All.Contains)
-            .WithMessage($"Gecerli roller: {string.Join(", ", MonitorRoles.All)}.");
+            .WithMessage(_ => text["Valid roles: {0}.", string.Join(", ", MonitorRoles.All)]);
     }
 }

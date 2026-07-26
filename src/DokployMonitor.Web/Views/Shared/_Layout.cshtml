@@ -1,7 +1,18 @@
+@using System.Globalization
 @using DokployMonitor.Infrastructure.Identity
+@using DokployMonitor.Web.Options
+@using DokployMonitor.Web.Services
 @{
     var action = ViewContext.RouteData.Values["action"]?.ToString();
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+
+    // Tema ilk render'da sunucudan yazilir; boylece yanlis temayla "flash" olmaz.
+    var themePreference = UiPreferences.ReadTheme(Context.Request);
+    var bootstrapTheme = UiPreferences.ToBootstrapTheme(themePreference);
+
+    var currentCulture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+    var textDirection = LocalizationSetup.IsRightToLeft(currentCulture) ? "rtl" : "ltr";
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
 
     string NavClass(string target) =>
         string.Equals(controller, target, StringComparison.OrdinalIgnoreCase) ? "nav-link active" : "nav-link";
@@ -14,11 +25,11 @@
     var userLabel = User.FindFirst(MonitorClaims.DisplayName)?.Value ?? User.Identity?.Name;
 }
 <!DOCTYPE html>
-<html lang="tr" data-bs-theme="dark">
+<html lang="@currentCulture" dir="@textDirection" data-bs-theme="@bootstrapTheme">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] · Trimango Dokploy Monitör</title>
+    <title>@ViewData["Title"] · Trimango @L["Monitor"]</title>
     <link rel="icon" href="~/img/trimango-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -28,29 +39,82 @@
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-semibold d-flex align-items-center gap-2"
                asp-controller="Dashboard" asp-action="Index">
-                <img src="~/img/trimango-logo.svg" alt="Trimango" class="brand-logo" />
-                <span class="brand-suffix">Dokploy Monitör</span>
+                @* Yazisiz ikon: marka adi logoda degil, yanindaki metinde. *@
+                <img src="~/img/trimango-icon.svg" alt="Trimango" class="brand-logo" />
+                <span class="brand-suffix">@L["Monitor"]</span>
             </a>
+
+            @* Mobilde menu katlanir; masaustunde her zaman acik. *@
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#main-nav" aria-controls="main-nav"
+                    aria-expanded="false" aria-label="@L["Toggle navigation"]">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="main-nav">
             <div class="navbar-nav me-auto">
-                <a class="@NavClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">Canli Pano</a>
-                <a class="@NavClass("Deployments")" asp-controller="Deployments" asp-action="Index">Gecmis</a>
-                <a class="@NavClass("Errors")" asp-controller="Errors" asp-action="Index">Hata Analizi</a>
-                <a class="nav-link @(action == "Diagnostics" ? "active" : "")" asp-controller="Dashboard" asp-action="Diagnostics">Tanilama</a>
+                <a class="@NavClass("Dashboard")" asp-controller="Dashboard" asp-action="Index">@L["Live Dashboard"]</a>
+                <a class="@NavClass("Deployments")" asp-controller="Deployments" asp-action="Index">@L["History"]</a>
+                <a class="@NavClass("Errors")" asp-controller="Errors" asp-action="Index">@L["Error Analysis"]</a>
+                <a class="nav-link @(action == "Diagnostics" ? "active" : "")" asp-controller="Dashboard" asp-action="Diagnostics">@L["Diagnostics"]</a>
                 @if (isSuperAdmin)
                 {
-                    <a class="@NavClass("Connections")" asp-controller="Connections" asp-action="Index">Baglantilar</a>
-                    <a class="@NavClass("Users")" asp-controller="Users" asp-action="Index">Kullanicilar</a>
+                    <a class="@NavClass("Connections")" asp-controller="Connections" asp-action="Index">@L["Connections"]</a>
+                    <a class="@NavClass("Users")" asp-controller="Users" asp-action="Index">@L["Users"]</a>
+                    <a class="@NavClass("Translations")" asp-controller="Translations" asp-action="Index">@L["Translations"]</a>
                 }
             </div>
-            <div class="d-flex align-items-center gap-3 small">
+            <div class="d-flex flex-wrap align-items-center gap-2 small py-2 py-lg-0">
                 @if (showConnectionStatus)
                 {
-                    <span id="connection-status" class="badge text-bg-secondary">baglaniyor…</span>
+                    <span id="connection-status" class="badge text-bg-secondary">@L["connecting…"]</span>
                 }
+
+                @* Tema: koyu / aydinlik / sistem. Secim cerezde tutulur, istemci hemen uygular. *@
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false" title="@L["Theme"]">
+                        @(themePreference switch
+                        {
+                            ThemePreference.Light => "☀",
+                            ThemePreference.Dark => "🌙",
+                            _ => "◐",
+                        })
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><h6 class="dropdown-header">@L["Theme"]</h6></li>
+                        <li><button class="dropdown-item" type="button" data-theme-option="System">◐ @L["System"]</button></li>
+                        <li><button class="dropdown-item" type="button" data-theme-option="Dark">🌙 @L["Dark"]</button></li>
+                        <li><button class="dropdown-item" type="button" data-theme-option="Light">☀ @L["Light"]</button></li>
+                    </ul>
+                </div>
+
+                @* Dil: cerez yoksa tarayici/sistem dili kullanilir. *@
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false" title="@L["Language"]">
+                        @LocalizationSetup.Flag(currentCulture) @currentCulture.ToUpperInvariant()
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end language-menu">
+                        <li><h6 class="dropdown-header">@L["Language"]</h6></li>
+                        @foreach (var culture in LocalizationSetup.Supported)
+                        {
+                            <li>
+                                <form method="post" asp-controller="Preferences" asp-action="SetLanguage" class="m-0">
+                                    <input type="hidden" name="culture" value="@culture.Code" />
+                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                    <button class="dropdown-item @(culture.Code == currentCulture ? "active" : "")" type="submit">
+                                        <span class="me-1">@culture.Flag</span>@culture.NativeName
+                                        <span class="text-secondary small">@culture.Code</span>
+                                    </button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                </div>
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     <a class="text-secondary text-decoration-none" asp-controller="Account" asp-action="ChangeCredentials"
-                       title="Kimlik bilgilerini degistir">
+                       title="@L["Change credentials"]">
                         @userLabel
                         @if (isSuperAdmin)
                         {
@@ -58,9 +122,10 @@
                         }
                     </a>
                     <form method="post" asp-controller="Account" asp-action="Logout" class="m-0">
-                        <button class="btn btn-sm btn-outline-secondary" type="submit">Cikis</button>
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">@L["Sign out"]</button>
                     </form>
                 }
+            </div>
             </div>
         </div>
     </nav>
@@ -79,6 +144,54 @@
 
     @await Html.PartialAsync("_LogPreviewModal")
 
+    @* Istemci tarafi metinler de yerelleştirilmis gelir; JS sabit metin tasimaz. *@
+    <script>
+        window.dmI18n = @Html.Raw(Json.Serialize(new Dictionary<string, string>
+        {
+            ["running"] = L["running"].Value,
+            ["succeeded"] = L["succeeded"].Value,
+            ["ERROR"] = L["ERROR"].Value,
+            ["cancelled"] = L["cancelled"].Value,
+            ["unknown"] = L["unknown"].Value,
+            ["just now"] = L["just now"].Value,
+            ["min ago"] = L["min ago"].Value,
+            ["h ago"] = L["h ago"].Value,
+            ["d ago"] = L["d ago"].Value,
+            ["live"] = L["live"].Value,
+            ["reconnecting…"] = L["reconnecting…"].Value,
+            ["connection closed"] = L["connection closed"].Value,
+            ["could not connect"] = L["could not connect"].Value,
+            ["fallback mode (polling)"] = L["fallback mode (polling)"].Value,
+            ["connecting…"] = L["connecting…"].Value,
+            ["completed"] = L["completed"].Value,
+            ["live stream…"] = L["live stream…"].Value,
+            ["stream closed"] = L["stream closed"].Value,
+            ["stream interrupted — refresh the page"] = L["stream interrupted — refresh the page"].Value,
+            ["could not start live stream"] = L["could not start live stream"].Value,
+            ["loading…"] = L["loading…"].Value,
+            ["No deployment is running right now."] = L["No deployment is running right now."].Value,
+            ["No running deployment matches the filter."] = L["No running deployment matches the filter."].Value,
+            ["No records."] = L["No records."].Value,
+            ["No records match the filter."] = L["No records match the filter."].Value,
+            ["No jobs waiting in the queue."] = L["No jobs waiting in the queue."].Value,
+            ["No webhook notifications yet."] = L["No webhook notifications yet."].Value,
+            ["No filter"] = L["No filter"].Value,
+            ["Filter active"] = L["Filter active"].Value,
+            ["records"] = L["records"].Value,
+            ["The indicators above always cover all projects over 24 hours."] = L["The indicators above always cover all projects over 24 hours."].Value,
+            ["shown (indicators are not filtered)"] = L["shown (indicators are not filtered)"].Value,
+            ["container log (docker)"] = L["container log (docker)"].Value,
+            ["build log"] = L["build log"].Value,
+            ["last {0} lines"] = L["last {0} lines"].Value,
+            ["Log file is empty."] = L["Log file is empty."].Value,
+            ["Log cannot be read."] = L["Log cannot be read."].Value,
+            ["could not fetch log"] = L["could not fetch log"].Value,
+            ["server unreachable"] = L["server unreachable"].Value,
+            ["container has not written any log yet"] = L["container has not written any log yet"].Value,
+            ["Details"] = L["Details"].Value,
+            ["Log"] = L["Log"].Value
+        }));
+    </script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/lib/signalr/signalr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

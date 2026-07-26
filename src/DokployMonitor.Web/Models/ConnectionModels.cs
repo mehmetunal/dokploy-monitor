@@ -1,5 +1,7 @@
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Core.Dokploy;
 using FluentValidation;
+using Microsoft.Extensions.Localization;
 
 namespace DokployMonitor.Web.Models;
 
@@ -31,37 +33,37 @@ public sealed class ConnectionInput
 
 public sealed class ConnectionInputValidator : AbstractValidator<ConnectionInput>
 {
-    public ConnectionInputValidator()
+    public ConnectionInputValidator(IStringLocalizer<SharedResource> text)
     {
         RuleFor(input => input.Name)
-            .NotEmpty().WithMessage("Baglanti adi zorunlu.")
+            .NotEmpty().WithMessage(_ => text["The connection name is required."])
             .MaximumLength(128);
 
         RuleFor(input => input.BaseUrl)
-            .NotEmpty().WithMessage("Adres zorunlu (or. http://dokploy:3000).");
+            .NotEmpty().WithMessage(_ => text["The address is required (e.g. http://dokploy:3000)."]);
 
         RuleFor(input => input.BaseUrl)
             .Must(BeAbsoluteHttpUrl)
-            .WithMessage("Mutlak bir http/https adresi olmali.")
+            .WithMessage(_ => text["Must be an absolute http/https address."])
             .When(input => !string.IsNullOrWhiteSpace(input.BaseUrl));
 
         RuleFor(input => input.BaseUrl)
             .Must(url => !url!.TrimEnd('/').EndsWith("/api", StringComparison.OrdinalIgnoreCase))
-            .WithMessage("Panelin koku yazilmali, sonuna /api eklenmemeli.")
+            .WithMessage(_ => text["Enter the panel root without a trailing /api."])
             .When(input => !string.IsNullOrWhiteSpace(input.BaseUrl));
 
         // Yeni kayitta anahtar zorunlu; duzenlemede bos birakilirsa mevcut anahtar korunur.
         RuleFor(input => input.ApiKey)
-            .NotEmpty().WithMessage("API anahtari zorunlu.")
+            .NotEmpty().WithMessage(_ => text["The API key is required."])
             .When(input => string.IsNullOrWhiteSpace(input.Id));
 
         RuleFor(input => input.TimeoutSeconds)
             .InclusiveBetween(5, 120)
-            .WithMessage("5-120 saniye arasinda olmali.");
+            .WithMessage(_ => text["Must be between 5 and 120 seconds."]);
 
         RuleFor(input => input.MaxParallelRequests)
             .InclusiveBetween(1, 16)
-            .WithMessage("1-16 arasinda olmali.");
+            .WithMessage(_ => text["Must be between 1 and 16."]);
     }
 
     private static bool BeAbsoluteHttpUrl(string? value) =>

@@ -70,7 +70,7 @@
         // Filtrede secili proje su an listede olmasa da secenek olarak kalmali.
         if (filter.project && !projects.includes(filter.project)) projects.push(filter.project);
 
-        const desired = ['<option value="">Tum projeler</option>']
+        const desired = ['<option value="">' + dm.escapeHtml(dm.t('All projects')) + '</option>']
             .concat(projects.map(function (p) {
                 return '<option value="' + dm.escapeHtml(p) + '">' + dm.escapeHtml(p) + '</option>';
             })).join('');
@@ -89,12 +89,13 @@
         const shown = active.filter(matches).length + recent.filter(matches).length;
 
         if (!filter.project && !filter.text && !filter.onlyFailed) {
-            info.textContent = 'Filtre yok · ' + total + ' kayit. Ustteki gostergeler her zaman tum projelerin 24 saatlik toplamidir.';
+            info.textContent = dm.t('No filter') + ' · ' + total + ' ' + dm.t('records')
+                + '. ' + dm.t('The indicators above always cover all projects over 24 hours.');
             return;
         }
 
-        info.textContent = 'Filtre aktif · ' + shown + '/' + total
-            + ' kayit gosteriliyor (gostergeler filtreden etkilenmez).';
+        info.textContent = dm.t('Filter active') + ' · ' + shown + '/' + total
+            + ' ' + dm.t('shown (indicators are not filtered)');
     }
 
     function renderStats(stats) {
@@ -117,8 +118,8 @@
         const sync = document.getElementById('sync-info');
         if (sync) {
             sync.textContent = stats.syncError
-                ? 'Senkronizasyon hatasi: ' + stats.syncError
-                : 'Son senkronizasyon: ' + dm.formatTime(stats.lastSyncAt);
+                ? dm.t('Sync error') + ': ' + stats.syncError
+                : dm.t('Last sync') + ': ' + dm.formatTime(stats.lastSyncAt);
             sync.className = stats.syncError ? 'small text-danger' : 'small text-secondary';
         }
     }
@@ -139,8 +140,8 @@
 
         if (visible.length === 0) {
             body.innerHTML = emptyRow(6, (rows || []).length === 0
-                ? 'Su anda calisan deployment yok.'
-                : 'Filtreye uyan calisan deployment yok.');
+                ? dm.t('No deployment is running right now.')
+                : dm.t('No running deployment matches the filter.'));
             return;
         }
 
@@ -149,8 +150,8 @@
             return '<tr class="row-running">' +
                 '<td>' + dm.statusBadge(r.status) + '</td>' +
                 '<td>' + serviceCell(r) + '</td>' +
-                '<td class="text-secondary">' + dm.escapeHtml(r.serviceType) + '</td>' +
-                '<td>' + dm.formatTime(started) + '</td>' +
+                '<td class="text-secondary d-none d-lg-table-cell">' + dm.escapeHtml(r.serviceType) + '</td>' +
+                '<td class="d-none d-md-table-cell">' + dm.formatTime(started) + '</td>' +
                 '<td class="fw-semibold text-info" data-elapsed-from="' + started + '">' +
                     dm.formatDuration((Date.now() - new Date(started).getTime()) / 1000) + '</td>' +
                 '<td class="text-end text-nowrap">' + logButton(r) + detailsLink(r.deploymentId) + '</td>' +
@@ -169,7 +170,7 @@
         }
 
         if (!rows || rows.length === 0) {
-            body.innerHTML = emptyRow(4, 'Kuyrukta bekleyen is yok.');
+            body.innerHTML = emptyRow(4, dm.t('No jobs waiting in the queue.'));
             return;
         }
 
@@ -180,7 +181,7 @@
                     (r.connectionName
                         ? ' <span class="badge text-bg-dark border border-secondary-subtle">' + dm.escapeHtml(r.connectionName) + '</span>'
                         : '') + '</td>' +
-                '<td class="text-secondary">' + dm.escapeHtml(r.jobType || '') + '</td>' +
+                '<td class="text-secondary d-none d-md-table-cell">' + dm.escapeHtml(r.jobType || '') + '</td>' +
                 '<td class="text-secondary">' + dm.relativeTime(r.enqueuedAt) + '</td>' +
                 '</tr>';
         }).join('');
@@ -194,8 +195,8 @@
 
         if (visible.length === 0) {
             body.innerHTML = emptyRow(7, (rows || []).length === 0
-                ? 'Kayit yok.'
-                : 'Filtreye uyan kayit yok.');
+                ? dm.t('No records.')
+                : dm.t('No records match the filter.'));
             return;
         }
 
@@ -204,10 +205,10 @@
             return '<tr class="' + cssClass + '">' +
                 '<td>' + dm.statusBadge(r.status) + '</td>' +
                 '<td>' + serviceCell(r) + '</td>' +
-                '<td class="text-secondary">' + dm.escapeHtml(r.serviceType) + '</td>' +
-                '<td>' + dm.formatTime(r.createdAt) + '</td>' +
+                '<td class="text-secondary d-none d-lg-table-cell">' + dm.escapeHtml(r.serviceType) + '</td>' +
+                '<td class="d-none d-md-table-cell">' + dm.formatTime(r.createdAt) + '</td>' +
                 '<td>' + (r.durationSeconds == null ? '—' : dm.formatDuration(r.durationSeconds)) + '</td>' +
-                '<td class="error-cell">' + (r.errorSummary ? '<code>' + dm.escapeHtml(r.errorSummary) + '</code>' : '') + '</td>' +
+                '<td class="error-cell d-none d-xl-table-cell">' + (r.errorSummary ? '<code>' + dm.escapeHtml(r.errorSummary) + '</code>' : '') + '</td>' +
                 '<td class="text-end text-nowrap">' + logButton(r) + detailsLink(r.deploymentId) + '</td>' +
                 '</tr>';
         }).join('');
@@ -218,7 +219,7 @@
         if (!list) return;
 
         if (!rows || rows.length === 0) {
-            list.innerHTML = '<li class="list-group-item text-secondary">Henuz webhook bildirimi gelmedi.</li>';
+            list.innerHTML = '<li class="list-group-item text-secondary">' + dm.escapeHtml(dm.t('No webhook notifications yet.')) + '</li>';
             return;
         }
 
@@ -259,7 +260,7 @@
         if (!r.hasLog) return '';
         return '<button type="button" class="btn btn-sm btn-outline-info me-1" ' +
             'data-log-preview="' + dm.escapeHtml(r.deploymentId) + '" ' +
-            'data-log-label="' + dm.escapeHtml(r.serviceName) + '">Log</button>';
+            'data-log-label="' + dm.escapeHtml(r.serviceName) + '">' + dm.escapeHtml(dm.t('Log')) + '</button>';
     }
 
     function emptyRow(colspan, text) {
@@ -282,7 +283,7 @@
 
     function startPolling() {
         if (pollTimer) return;
-        dm.setConnectionStatus('yedek mod (polling)', 'text-bg-warning');
+        dm.setConnectionStatus(dm.t('fallback mode (polling)'), 'text-bg-warning');
         pollTimer = setInterval(pollOnce, 5000);
     }
 
@@ -346,11 +347,11 @@
         });
 
         connection.onreconnecting(function () {
-            dm.setConnectionStatus('yeniden baglaniyor…', 'text-bg-warning');
+            dm.setConnectionStatus(dm.t('reconnecting…'), 'text-bg-warning');
         });
 
         connection.onreconnected(function () {
-            dm.setConnectionStatus('canli', 'text-bg-success');
+            dm.setConnectionStatus(dm.t('live'), 'text-bg-success');
             stopPolling();
             pollOnce();
         });
@@ -360,7 +361,7 @@
         });
 
         connection.start()
-            .then(function () { dm.setConnectionStatus('canli', 'text-bg-success'); })
+            .then(function () { dm.setConnectionStatus(dm.t('live'), 'text-bg-success'); })
             .catch(function () { startPolling(); });
     });
 })();

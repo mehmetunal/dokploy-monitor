@@ -29,6 +29,9 @@ tests/DokployMonitor.Tests          xUnit testleri
 | Giris ve roller | **ASP.NET Core Identity** (cookie) | `Infrastructure/Identity`, `Controllers/AccountController.cs` |
 | Coklu Dokploy sunucusu | Baglanti basina istemci fabrikasi | `Infrastructure/Dokploy/DokployClientFactory.cs` |
 | Container loglari | Docker Engine API (unix socket) | `Infrastructure/Docker` |
+| Onbellek | `IDistributedCache` — **Memory ya da Redis** (configden) | `Infrastructure/Caching` |
+| Arayuz dili | **Veritabani tabanli** `IStringLocalizer` (panelden duzenlenir) | `Infrastructure/Localization` |
+| Arayuz temasi | Cerez tabanli, sunucu tarafinda uygulanir | `Services/UiPreferences.cs` |
 
 ### Veri nereden geliyor?
 
@@ -111,6 +114,85 @@ geldigi baglantiyla etiketler.
 
 ---
 
+## Arayuz: tema ve dil
+
+**Tema** — navbar'daki secici uc secenek sunar: **Sistem** (isletim sisteminin
+`prefers-color-scheme` tercihi), **Koyu**, **Aydinlik**. Secim `dm.theme` cerezinde tutulur
+ve **sunucu ilk render'da** `<html data-bs-theme>` degerini yazar; boylece sayfa acilirken
+yanlis temayla "flash" olmaz. Sistem modunda tercih degisirse (or. gece moduna gecis) sayfa
+yenilenmeden uyum saglar.
+
+**Dil** — 17 dil desteklenir: **Türkçe (kaynak)**, English, Deutsch, Français, Español,
+Português, Italiano, Nederlands, Polski, Русский, Українська, **العربية (RTL)**, 简体中文,
+日本語, 한국어, हिन्दी, Bahasa Indonesia. Secim sirasi:
+
+1. Kullanicinin acik secimi (`.AspNetCore.Culture` cerezi — navbar'daki dil secici)
+2. **Sistem/tarayici dili** (`Accept-Language` basligi)
+3. Varsayilan: Türkçe
+
+### Ceviriler veritabaninda
+
+**resx dosyasi yoktur.** Tum ceviriler `Translations` tablosunda tutulur ve
+**SuperAdmin panelden duzenler**: `/Translations` ekraninda dil secilir, satirlar
+duzenlenir, kaydedilince **aninda** uygulanir (yeniden derleme/deploy gerekmez).
+
+- **Anahtar, kaynak dildeki (Turkce) metnin kendisidir**: `L["Canli Pano"]`. Ceviri bos
+  ise ekranda kaynak metin gorunur — eksik ceviri sayfayi bozmaz.
+- **Eksik anahtarlar otomatik toplanir**: bir metin ekranda ilk kez gorunduginde
+  "cevrilmemis" olarak listeye eklenir; yonetici neyi cevirmesi gerektigini gorur.
+- Kaynak (Turkce) metinler de ezilebilir: `tr` dilinde satira deger yazmak yeterli.
+- Ilk kurulumda kutudan cikan ceviriler tohum olarak eklenir
+  (`Infrastructure/Localization/TranslationDefaults.cs`); **var olan satirlar asla ezilmez**,
+  panelden yapilan duzenlemeler korunur.
+- `IStringLocalizer` senkron oldugu icin ceviriler bellekte anlik goruntu olarak tutulur;
+  kaydetme aninda tazelenir, ayrica arka planda 30 saniyede bir yenilenir (coklu ornek
+  kurulumunda diger ornekler bu surede yakalar).
+
+Sagdan sola yazilan diller (su an Arapca) icin `<html dir="rtl">` otomatik ayarlanir.
+Kod olarak **iki harfli** kullanilir; tarayici `zh-Hans` ya da `pt-BR` gonderse de
+dogru satira duser.
+
+**Tohum veriler**: kutudan cikan 16 dilin cevirileri
+`Infrastructure/Localization/TranslationDefaults.cs` icindedir (dil × 86 anahtar) ve ilk
+acilista veritabanina yazilir. Tohumlama davranisi:
+
+| Durum | Sonuc |
+|---|---|
+| Satir yok | eklenir |
+| Satir var, degeri **bos** | tohumla doldurulur |
+| Satir var, degeri **dolu** | **dokunulmaz** (panelden yapilan duzenleme korunur) |
+
+Yeni dil eklemek: `Options/LocalizationSetup.cs` icindeki `Supported` dizisine bir satir
+ekleyin (`new("sv", "Svenska")`, RTL ise `RightToLeft: true`); cevirileri panelden girin ya
+da tohum dosyasina koyun.
+
+---
+
+## Onbellek (Memory / Redis)
+
+Kod her zaman `IDistributedCache` uzerinden calisir; sagalayici yalnizca yapilandirmadan
+secilir. Redis **secili ve adres verilmisse** Redis, aksi halde bellek ici onbellek kullanilir.
+
+```env
+Cache__Provider=Memory            # veya Redis
+Cache__RedisConnectionString=redis:6379
+Cache__InstanceName=dokploy-monitor:
+Cache__DefaultSeconds=30
+```
+
+- `Provider=Redis` verilip adres bos birakilirsa uygulama **acilista hata verir** (sessizce
+  bellege dusmez) — yanlis yapilandirma gizlenmesin.
+- Redis gecici olarak erisilemezse istek **hata almaz**: onbellek atlanir, deger veritabanindan
+  uretilir ve log'a uyari yazilir. Onbellek bir hizlandirma katmanidir.
+- Tanilama ekraninda hangi sagalayicinin kullanildigi ve yaz/oku denemesinin sonucu gorunur.
+- Onbelleklenen veriler: proje adlari listesi ve baglanti adlari (her pano ciziminde
+  tekrarlanan sorgular). Baglanti degistiginde ilgili anahtar dusurulur.
+
+Birden fazla Monitor ornegi calistiracaksaniz (ya da yeniden baslatmada onbellek korunsun
+istiyorsaniz) Redis'i secin; tek konteynerde `Memory` yeterlidir.
+
+---
+
 ## Ekranlar
 
 | Yol | Icerik |
@@ -123,6 +205,7 @@ geldigi baglantiyla etiketler.
 | `/Dashboard/Diagnostics` | Baglanti basina yetenek testi, Docker soketi durumu, webhook URL'i |
 | `/Connections` | Dokploy sunucu/API anahtari yonetimi (**SuperAdmin**) |
 | `/Users` | Kullanici yonetimi (**SuperAdmin**) |
+| `/Translations` | Arayuz cevirileri: duzenle, ekle, eksikleri gor (**SuperAdmin**) |
 | `/health` | Saglik ucu (anonim) |
 
 ---
@@ -141,6 +224,9 @@ Tum ayarlar ortam degiskeni ile gecilebilir (`__` ic ice bolum ayraci):
 | `Auth__AdminPassword` | Bos ise `Super123!` kullanilir ve ilk giriste degistirme zorunlu olur |
 | `Auth__SessionDays` | Oturum cerezi omru (7) |
 | `Docker__Enabled` / `Docker__SocketPath` | Container logu (docker logs) ayarlari; soket mount edilmeli |
+| `Cache__Provider` | `Memory` (varsayilan) veya `Redis` |
+| `Cache__RedisConnectionString` | `Redis` secildiginde zorunlu (or. `redis:6379`) |
+| `Cache__InstanceName` / `Cache__DefaultSeconds` | Redis anahtar oneki ve varsayilan yasam suresi |
 | `ConnectionStrings__Default` | SQLite yolu (varsayilan `/app/data/monitor.db`) |
 | `Monitor__IdlePollSeconds` / `Monitor__ActivePollSeconds` | Polling araliklari (15 / 2) |
 | `Monitor__RetentionDays` | Kayit saklama suresi (90, `0` = sinirsiz) |

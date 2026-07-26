@@ -20,7 +20,7 @@
     };
 }
 
-<div class="d-flex justify-content-between align-items-start mb-3">
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-start mb-3">
     <div>
         <h1 class="h4 mb-1">
             @d.DisplayName
@@ -34,37 +34,35 @@
             }
         </div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         @if (canAct)
         {
             @if (d.Status.IsActive())
             {
                 <form asp-action="Kill" asp-route-id="@d.DeploymentId" method="post"
-                      onsubmit="return confirm('Bu deployment durdurulacak. Emin misiniz?');">
-                    <button class="btn btn-sm btn-outline-danger" type="submit">Durdur</button>
+                      data-confirm="@L["This deployment will be stopped. Are you sure?"]">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">@L["Stop"]</button>
                 </form>
             }
             @if (d.ApplicationId is not null || d.ComposeId is not null)
             {
                 <form asp-action="Redeploy" asp-route-id="@d.DeploymentId" method="post"
-                      onsubmit="return confirm('Servis yeniden deploy edilecek. Emin misiniz?');">
-                    <button class="btn btn-sm btn-outline-light" type="submit">Yeniden Deploy</button>
+                      data-confirm="@L["The service will be redeployed. Are you sure?"]">
+                    <button class="btn btn-sm btn-outline-light" type="submit">@L["Redeploy"]</button>
                 </form>
 
                 @* Replay: bu eski kayittan ayni servisin deploy'unu tekrarlar.
                    Dokploy belirli bir commit'i deploy edemedigi icin kaynagin guncel hali derlenir. *@
                 <form asp-action="Replay" asp-route-id="@d.DeploymentId" method="post"
-                      onsubmit="return confirm('Bu deployment tekrarlanacak (replay).\n\nDikkat: Dokploy eski commit\'i degil, kaynagin GUNCEL halini derler.\n\nDevam edilsin mi?');">
+                      data-confirm="@L["This deployment will be replayed. Note: Dokploy builds the CURRENT source, not the old commit. Continue?"]">
                     <button class="btn btn-sm btn-outline-warning" type="submit"
-                            title="Bu kayittan ayni servisin deploy'unu tekrar tetikle">Replay</button>
+                            title="@L["Trigger this deployment again from this record"]">@L["Replay"]</button>
                 </form>
             }
         }
         else
         {
-            <span class="small text-secondary align-self-center">
-                Deployment mudahalesi icin @MonitorRoles.SuperAdmin rolu gerekir.
-            </span>
+            <span class="small text-secondary align-self-center">@L["Deployment actions require the SuperAdmin role."]</span>
         }
     </div>
 </div>
@@ -73,12 +71,12 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Build Logu</span>
+                <span>@L["Build Log"]</span>
                 <div class="d-flex gap-3 align-items-center">
                     <span id="log-status" class="small text-secondary"></span>
                     <div class="form-check form-switch mb-0">
                         <input class="form-check-input" type="checkbox" id="autoscroll" checked>
-                        <label class="form-check-label small" for="autoscroll">Otomatik kaydir</label>
+                        <label class="form-check-label small" for="autoscroll">@L["Auto-scroll"]</label>
                     </div>
                 </div>
             </div>
@@ -86,7 +84,7 @@
                 @if (!Model.Log.Available)
                 {
                     <div class="alert alert-warning py-2 mb-0 small">
-                        @(Model.Log.UnavailableReason ?? "Log okunamiyor.")
+                        @(Model.Log.UnavailableReason ?? L["Log cannot be read."].Value)
                     </div>
                 }
                 else
@@ -101,13 +99,11 @@
            Build logundan farklidir; Engine API'sinden istege bagli olarak cekilir. *@
         <div class="card mt-3">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>
-                    Container Logu
-                    <span class="small text-secondary">(docker logs @(d.AppName ?? d.ServiceName))</span>
+                <span>@L["Container Log"]<span class="small text-secondary">(docker logs @(d.AppName ?? d.ServiceName))</span>
                 </span>
                 <div class="d-flex gap-2 align-items-center">
-                    <span id="container-log-status" class="small text-secondary">yuklenmedi</span>
-                    <button type="button" class="btn btn-sm btn-outline-info" id="container-log-load">Yukle</button>
+                    <span id="container-log-status" class="small text-secondary">@L["not loaded"]</span>
+                    <button type="button" class="btn btn-sm btn-outline-info" id="container-log-load">@L["Load"]</button>
                 </div>
             </div>
             <div class="card-body p-2">
@@ -118,22 +114,22 @@
 
     <div class="col-lg-4">
         <div class="card mb-3">
-            <div class="card-header">Ozet</div>
+            <div class="card-header">@L["Summary"]</div>
             <div class="card-body small">
                 <dl class="row mb-0">
-                    <dt class="col-5 text-secondary">Baslik</dt>
+                    <dt class="col-5 text-secondary">@L["Title"]</dt>
                     <dd class="col-7">@(d.Title ?? "—")</dd>
 
-                    <dt class="col-5 text-secondary">Olusturuldu</dt>
+                    <dt class="col-5 text-secondary">@L["Created"]</dt>
                     <dd class="col-7">@d.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</dd>
 
-                    <dt class="col-5 text-secondary">Basladi</dt>
+                    <dt class="col-5 text-secondary">@L["Started"]</dt>
                     <dd class="col-7">@(d.StartedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss") ?? "—")</dd>
 
-                    <dt class="col-5 text-secondary">Bitti</dt>
+                    <dt class="col-5 text-secondary">@L["Finished"]</dt>
                     <dd class="col-7">@(d.FinishedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss") ?? "—")</dd>
 
-                    <dt class="col-5 text-secondary">Sure</dt>
+                    <dt class="col-5 text-secondary">@L["Duration"]</dt>
                     <dd class="col-7">
                         @if (d.Status.IsActive())
                         {
@@ -145,10 +141,10 @@
                         }
                     </dd>
 
-                    <dt class="col-5 text-secondary">Sunucu</dt>
-                    <dd class="col-7">@(d.ServerName ?? "yerel")</dd>
+                    <dt class="col-5 text-secondary">@L["Server"]</dt>
+                    <dd class="col-7">@(d.ServerName ?? L["local"].Value)</dd>
 
-                    <dt class="col-5 text-secondary">Deployment ID</dt>
+                    <dt class="col-5 text-secondary">@L["Deployment ID"]</dt>
                     <dd class="col-7"><code class="small">@d.DeploymentId</code></dd>
                 </dl>
             </div>
@@ -157,13 +153,13 @@
         @if (!string.IsNullOrWhiteSpace(d.ErrorMessage))
         {
             <div class="card mb-3 border-danger-subtle">
-                <div class="card-header text-danger">Hata Mesaji</div>
+                <div class="card-header text-danger">@L["Error Message"]</div>
                 <div class="card-body">
                     <pre class="small mb-0 text-danger" style="white-space:pre-wrap">@d.ErrorMessage</pre>
                     @if (d.ErrorSignatureHash is not null)
                     {
                         <a class="small" asp-controller="Errors" asp-action="Signature" asp-route-hash="@d.ErrorSignatureHash">
-                            Ayni hatayi veren diger deploymentlar →
+                            @L["Other deployments with the same error →"]
                         </a>
                     }
                 </div>
@@ -171,11 +167,11 @@
         }
 
         <div class="card mb-3">
-            <div class="card-header">Olay Gecmisi</div>
+            <div class="card-header">@L["Event History"]</div>
             <div class="card-body">
                 @if (Model.Events.Count == 0)
                 {
-                    <div class="text-secondary small">Bu deployment izlemeye alinmadan once tamamlanmis.</div>
+                    <div class="text-secondary small">@L["This deployment finished before monitoring started."]</div>
                 }
                 @foreach (var e in Model.Events)
                 {
@@ -197,9 +193,9 @@
         {
             <div class="card mb-3">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Bu Servisin Son Deploymentlari</span>
+                    <span>@L["Recent Deployments of This Service"]</span>
                     <a class="text-decoration-none small text-secondary"
-                       asp-action="Index" asp-route-q="@d.DisplayName">tum gecmis →</a>
+                       asp-action="Index" asp-route-q="@d.DisplayName">@L["full history →"]</a>
                 </div>
                 <ul class="list-group list-group-flush small">
                     @foreach (var h in Model.History)
@@ -212,7 +208,7 @@
                                 </a>
                                 @if (h.DeploymentId == d.DeploymentId)
                                 {
-                                    <span class="badge text-bg-secondary ms-1">bu</span>
+                                    <span class="badge text-bg-secondary ms-1">@L["this"]</span>
                                 }
                             </span>
                             <span class="text-nowrap">
@@ -220,7 +216,7 @@
                                      && (!string.IsNullOrWhiteSpace(h.LogPath) || !string.IsNullOrWhiteSpace(h.ArchivedLogPath)))
                                 {
                                     <button type="button" class="btn btn-sm btn-outline-info py-0 me-1"
-                                            data-log-preview="@h.DeploymentId" data-log-label="@h.DisplayName">Log</button>
+                                            data-log-preview="@h.DeploymentId" data-log-label="@h.DisplayName">@L["Log"]</button>
                                 }
                                 <span class="text-secondary">
                                     @(h.DurationSeconds is null ? "—" : TimeSpan.FromSeconds(h.DurationSeconds.Value).ToString(@"mm\:ss"))
@@ -236,9 +232,9 @@
         {
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Projedeki Diger Deploymentlar</span>
+                    <span>@L["Other Deployments in Project"]</span>
                     <a class="text-decoration-none small text-secondary"
-                       asp-action="Index" asp-route-project="@d.ProjectName">projeyi filtrele →</a>
+                       asp-action="Index" asp-route-project="@d.ProjectName">@L["filter project →"]</a>
                 </div>
                 <ul class="list-group list-group-flush small">
                     @foreach (var p in Model.ProjectHistory)
@@ -255,7 +251,7 @@
                                     @if (!string.IsNullOrWhiteSpace(p.LogPath) || !string.IsNullOrWhiteSpace(p.ArchivedLogPath))
                                     {
                                         <button type="button" class="btn btn-sm btn-outline-info py-0 me-1"
-                                                data-log-preview="@p.DeploymentId" data-log-label="@p.DisplayName">Log</button>
+                                                data-log-preview="@p.DeploymentId" data-log-label="@p.DisplayName">@L["Log"]</button>
                                     }
                                     <span class="text-secondary">@p.CreatedAt.ToLocalTime().ToString("dd.MM HH:mm")</span>
                                 </span>

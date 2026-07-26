@@ -1,4 +1,5 @@
 using DokployMonitor.Core.Abstractions;
+using DokployMonitor.Infrastructure.Caching;
 using DokployMonitor.Web.Models;
 using DokployMonitor.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -29,6 +30,7 @@ public sealed class DashboardController(DashboardQueryService dashboard) : Contr
         [FromServices] IDokployClientFactory clientFactory,
         [FromServices] ConnectionService connections,
         [FromServices] IContainerLogReader containerLogReader,
+        [FromServices] CacheService cache,
         CancellationToken ct)
     {
         // Her baglanti ayri kontrol edilir: biri bozuksa hangisi oldugu gorunur.
@@ -49,6 +51,7 @@ public sealed class DashboardController(DashboardQueryService dashboard) : Contr
         {
             Connections = results,
             Docker = await containerLogReader.CheckHealthAsync(ct),
+            Cache = await cache.CheckHealthAsync(ct),
         });
     }
 

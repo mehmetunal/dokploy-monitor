@@ -5,7 +5,7 @@
 @inject IOptions<LogOptions> LogOptions
 @inject IOptions<DokployMonitor.Infrastructure.Docker.DockerOptions> DockerOptions
 @{
-    ViewData["Title"] = "Tanilama";
+    ViewData["Title"] = L["Diagnostics"].Value;
     var logs = LogOptions.Value;
     var docker = DockerOptions.Value;
 
@@ -14,10 +14,10 @@
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Kurulum Tanilama</h1>
+    <h1 class="h4 mb-0">@L["Setup Diagnostics"]</h1>
     @if (User.IsInRole(MonitorRoles.SuperAdmin))
     {
-        <a class="btn btn-sm btn-outline-light" asp-controller="Connections" asp-action="Index">Baglantilari yonet</a>
+        <a class="btn btn-sm btn-outline-light" asp-controller="Connections" asp-action="Index">@L["Manage connections"]</a>
     }
 </div>
 
@@ -26,8 +26,7 @@
         @if (Model.Connections.Count == 0)
         {
             <div class="alert alert-warning py-2 small">
-                Tanimli Dokploy baglantisi yok. <strong>Baglantilar</strong> ekranindan ekleyin
-                ya da <code>Dokploy__BaseUrl</code> / <code>Dokploy__ApiKey</code> degiskenlerini verin.
+                @L["No Dokploy connection is configured. Add one from the Connections screen, or provide the Dokploy__BaseUrl / Dokploy__ApiKey variables."]
             </div>
         }
 
@@ -40,7 +39,7 @@
                         @connection.Name
                         @if (!connection.Enabled)
                         {
-                            <span class="badge text-bg-secondary ms-1">devre disi</span>
+                            <span class="badge text-bg-secondary ms-1">@L["disabled"]</span>
                         }
                     </span>
                     <code class="small text-secondary">@connection.BaseUrl</code>
@@ -49,10 +48,10 @@
                     @if (item.Health is { } health)
                     {
                         <dl class="row mb-0">
-                            <dt class="col-6">Sunucuya erisim</dt>
+                            <dt class="col-6">@L["Server reachable"]</dt>
                             <dd class="col-6 @Tone(health.IsReachable)">@Mark(health.IsReachable)</dd>
 
-                            <dt class="col-6">API anahtari gecerli</dt>
+                            <dt class="col-6">@L["API key valid"]</dt>
                             <dd class="col-6 @Tone(health.IsAuthorized)">@Mark(health.IsAuthorized)</dd>
 
                             <dt class="col-6">deployment.allCentralized</dt>
@@ -60,7 +59,7 @@
                                 @Mark(health.SupportsCentralizedDeployments)
                                 @if (!health.SupportsCentralizedDeployments)
                                 {
-                                    <span class="small text-secondary d-block">Servis servis toplama moduna duser.</span>
+                                    <span class="small text-secondary d-block">@L["Falls back to per-service collection mode."]</span>
                                 }
                             </dd>
 
@@ -69,7 +68,7 @@
                                 @Mark(health.SupportsQueueList)
                                 @if (!health.SupportsQueueList)
                                 {
-                                    <span class="small text-secondary d-block">Kuyruk gorunumu devre disi kalir.</span>
+                                    <span class="small text-secondary d-block">@L["Queue view will be disabled."]</span>
                                 }
                             </dd>
                         </dl>
@@ -81,32 +80,32 @@
                     }
                     else
                     {
-                        <div class="small text-secondary">Baglanti devre disi; kontrol edilmedi.</div>
+                        <div class="small text-secondary">@L["Connection disabled; not checked."]</div>
                     }
 
                     <div class="small text-secondary mt-2">
-                        API anahtari: <code>@connection.MaskedApiKey</code>
+                        @L["API key:"] <code>@connection.MaskedApiKey</code>
                         @if (connection.LastSyncAt is { } lastSync)
                         {
-                            <span>· son senkron: @lastSync.ToLocalTime().ToString("dd.MM HH:mm:ss")</span>
+                            <span>· @L["last sync"]: @lastSync.ToLocalTime().ToString("dd.MM HH:mm:ss")</span>
                         }
                     </div>
                     @if (connection.LastSyncError is not null)
                     {
-                        <div class="small text-warning mt-1">Son senkron hatasi: @connection.LastSyncError</div>
+                        <div class="small text-warning mt-1">@L["Last sync error"]: @connection.LastSyncError</div>
                     }
                 </div>
             </div>
         }
 
         <div class="card">
-            <div class="card-header">Container Logu (docker logs)</div>
+            <div class="card-header">@L["Container Log (docker logs)"]</div>
             <div class="card-body">
                 <dl class="row mb-0 small">
-                    <dt class="col-6">Yapilandirmada acik</dt>
+                    <dt class="col-6">@L["Enabled in configuration"]</dt>
                     <dd class="col-6 @Tone(Model.Docker.Enabled)">@Mark(Model.Docker.Enabled)</dd>
 
-                    <dt class="col-6">Soket dosyasi</dt>
+                    <dt class="col-6">@L["Socket file"]</dt>
                     <dd class="col-6 @Tone(Model.Docker.SocketExists)">
                         @Mark(Model.Docker.SocketExists) <code>@docker.SocketPath</code>
                     </dd>
@@ -126,11 +125,7 @@
                 }
                 @if (!Model.Docker.Reachable)
                 {
-                    <div class="small text-secondary mt-2">
-                        Container loglari icin konteynere soketi mount edin:
-                        <code>/var/run/docker.sock:/var/run/docker.sock:ro</code>.
-                        Erisim yoksa log goruntuleyici build loguna duser.
-                    </div>
+                    <div class="small text-secondary mt-2">@L["For container logs, mount the socket into the container: /var/run/docker.sock:/var/run/docker.sock:ro. Without access the log viewer falls back to the build log."]</div>
                 }
             </div>
         </div>
@@ -138,16 +133,16 @@
 
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">Yapilandirma</div>
+            <div class="card-header">@L["Configuration"]</div>
             <div class="card-body">
                 <dl class="row mb-0 small">
-                    <dt class="col-5">Baglanti sayisi</dt>
+                    <dt class="col-5">@L["Connection count"]</dt>
                     <dd class="col-7">
                         @Model.Connections.Count
-                        (@Model.Connections.Count(c => c.Connection.Enabled) etkin)
+                        (@L["{0} enabled", Model.Connections.Count(c => c.Connection.Enabled)])
                     </dd>
 
-                    <dt class="col-5">Log mount</dt>
+                    <dt class="col-5">@L["Log mount"]</dt>
                     <dd class="col-7">
                         @logs.MountPath
                         @if (Directory.Exists(logs.MountPath))
@@ -156,23 +151,35 @@
                         }
                         else
                         {
-                            <span class="text-danger">✘ bulunamadi</span>
+                            <span class="text-danger">@L["✘ not found"]</span>
                         }
                     </dd>
 
-                    <dt class="col-5">Dokploy log koku</dt>
+                    <dt class="col-5">@L["Dokploy log root"]</dt>
                     <dd class="col-7">@logs.HostPath</dd>
+
+                    <dt class="col-5">@L["Cache"]</dt>
+                    <dd class="col-7 @Tone(Model.Cache.Working)">
+                        @Mark(Model.Cache.Working) @Model.Cache.Provider
+                        @if (Model.Cache.UsesRedis)
+                        {
+                            <span class="badge text-bg-dark">Redis</span>
+                        }
+                        @if (Model.Cache.Error is not null)
+                        {
+                            <div class="small text-warning">@Model.Cache.Error</div>
+                        }
+                    </dd>
                 </dl>
             </div>
         </div>
 
         <div class="card mt-3">
-            <div class="card-header">Webhook Kurulumu</div>
+            <div class="card-header">@L["Webhook Setup"]</div>
             <div class="card-body small text-secondary">
-                Dokploy → Settings → Notifications → Add Notification (saglayici: <strong>Custom</strong>)
-                altinda su URL'i tanimlayin:
+                @L["Define this URL under Dokploy → Settings → Notifications → Add Notification (provider: Custom):"]
                 <pre class="mt-2 mb-0"><code>@($"{Context.Request.Scheme}://{Context.Request.Host}/api/webhooks/dokploy?token=<TOKEN>")</code></pre>
-                <div class="mt-2">Ayni URL tum Dokploy sunucularinda kullanilabilir; token ortaktir.</div>
+                <div class="mt-2">@L["The same URL works for every Dokploy server; the token is shared."]</div>
             </div>
         </div>
     </div>

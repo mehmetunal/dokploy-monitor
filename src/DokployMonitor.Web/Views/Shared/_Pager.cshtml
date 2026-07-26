@@ -1,0 +1,46 @@
+@model DokployMonitor.Web.Models.PageInfo
+@*
+    Shared pager. The surrounding page's query string is preserved so filters survive
+    page changes; only "page" and "size" are replaced.
+*@
+@{
+    var query = Context.Request.Query
+        .Where(pair => pair.Key != "page" && pair.Key != "size")
+        .ToDictionary(pair => pair.Key, pair => pair.Value.ToString());
+
+    string Url(int page, int size)
+    {
+        var parts = query.Select(pair => $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}").ToList();
+        parts.Add($"page={page}");
+        parts.Add($"size={size}");
+        return $"{Context.Request.Path}?{string.Join("&", parts)}";
+    }
+}
+
+<div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mt-2">
+    <div class="small text-secondary">
+        @L["{0}-{1} of {2}", Model.FirstRow, Model.LastRow, Model.TotalCount]
+    </div>
+
+    <div class="d-flex gap-2 align-items-center">
+        <div class="btn-group btn-group-sm">
+            <a class="btn btn-outline-secondary @(Model.HasPrevious ? "" : "disabled")"
+               href="@Url(1, Model.Size)" aria-label="@L["First page"]">«</a>
+            <a class="btn btn-outline-secondary @(Model.HasPrevious ? "" : "disabled")"
+               href="@Url(Model.Page - 1, Model.Size)" aria-label="@L["Previous page"]">‹</a>
+            <span class="btn btn-outline-secondary disabled">@L["Page {0} / {1}", Model.Page, Model.PageCount]</span>
+            <a class="btn btn-outline-secondary @(Model.HasNext ? "" : "disabled")"
+               href="@Url(Model.Page + 1, Model.Size)" aria-label="@L["Next page"]">›</a>
+            <a class="btn btn-outline-secondary @(Model.HasNext ? "" : "disabled")"
+               href="@Url(Model.PageCount, Model.Size)" aria-label="@L["Last page"]">»</a>
+        </div>
+
+        <div class="btn-group btn-group-sm">
+            @foreach (var size in DokployMonitor.Web.Models.PageInfo.AllowedSizes)
+            {
+                <a class="btn btn-outline-secondary @(size == Model.Size ? "active" : "")"
+                   href="@Url(1, size)">@size</a>
+            }
+        </div>
+    </div>
+</div>

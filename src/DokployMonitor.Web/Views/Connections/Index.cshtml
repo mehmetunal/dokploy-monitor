@@ -1,16 +1,12 @@
 @model DokployMonitor.Web.Models.ConnectionListViewModel
 @{
-    ViewData["Title"] = "Baglantilar";
+    ViewData["Title"] = L["Connections"].Value;
     var input = Model.NewConnection;
     var editing = !string.IsNullOrWhiteSpace(input.Id);
 }
 
-<h1 class="h4 mb-1">Dokploy Baglantilari</h1>
-<p class="small text-secondary mb-3">
-    Her baglanti bir Dokploy sunucusu ve bir API anahtaridir. Senkronizasyon tum
-    <strong>etkin</strong> baglantilari dolasir; toplanan her deployment kaydi hangi
-    baglantidan geldigini tasir. Anahtarlar veritabaninda tutulur ve ekranda maskelenir.
-</p>
+<h1 class="h4 mb-1">@L["Dokploy Connections"]</h1>
+<p class="small text-secondary mb-3">@L["Each connection is one Dokploy server and one API key. Synchronisation walks every enabled connection; each collected deployment record carries the connection it came from. Keys are stored in the database and shown masked."]</p>
 
 @if (!ViewData.ModelState.IsValid)
 {
@@ -22,14 +18,14 @@
 <div class="row g-3">
     <div class="col-lg-7">
         <div class="card">
-            <div class="card-header">Tanimli Baglantilar (@Model.Connections.Count)</div>
+            <div class="card-header">@L["Configured Connections"] (@Model.Connections.Count)</div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
-                            <th>Ad / Adres</th>
-                            <th style="width:7rem">Kayit</th>
-                            <th style="width:7rem">Durum</th>
+                            <th>@L["Name / Address"]</th>
+                            <th style="width:7rem">@L["Records"]</th>
+                            <th style="width:7rem">@L["Status"]</th>
                             <th style="width:11rem"></th>
                         </tr>
                     </thead>
@@ -37,7 +33,7 @@
                         @if (Model.Connections.Count == 0)
                         {
                             <tr><td colspan="4" class="text-center text-secondary py-4">
-                                Henuz baglanti yok. Sagdaki formdan ekleyin.
+                                @L["No connection yet. Add one using the form on the right."]
                             </td></tr>
                         }
                         @foreach (var connection in Model.Connections)
@@ -49,35 +45,35 @@
                                     <div class="small text-secondary"><code>@connection.MaskedApiKey</code></div>
                                 </td>
                                 <td class="small text-secondary">
-                                    @Model.DeploymentCounts.GetValueOrDefault(connection.Id) kayit
+                                    @L["{0} records", Model.DeploymentCounts.GetValueOrDefault(connection.Id)]
                                 </td>
                                 <td class="small">
                                     @if (!connection.Enabled)
                                     {
-                                        <span class="text-secondary">devre disi</span>
+                                        <span class="text-secondary">@L["disabled"]</span>
                                     }
                                     else if (connection.LastSyncError is not null)
                                     {
-                                        <span class="text-danger" title="@connection.LastSyncError">hata</span>
+                                        <span class="text-danger" title="@connection.LastSyncError">@L["error"]</span>
                                     }
                                     else if (connection.LastSyncAt is not null)
                                     {
-                                        <span class="text-success">calisiyor</span>
+                                        <span class="text-success">@L["running"]</span>
                                     }
                                     else
                                     {
-                                        <span class="text-warning">beklemede</span>
+                                        <span class="text-warning">@L["pending"]</span>
                                     }
                                 </td>
                                 <td class="text-end text-nowrap">
                                     <form method="post" asp-action="Test" asp-route-id="@connection.Id" class="d-inline m-0">
-                                        <button class="btn btn-sm btn-outline-info" type="submit">Test</button>
+                                        <button class="btn btn-sm btn-outline-info" type="submit">@L["Test"]</button>
                                     </form>
                                     <a class="btn btn-sm btn-outline-light"
-                                       asp-action="Index" asp-route-edit="@connection.Id">Duzenle</a>
+                                       asp-action="Index" asp-route-edit="@connection.Id">@L["Edit"]</a>
                                     <form method="post" asp-action="Delete" asp-route-id="@connection.Id" class="d-inline m-0"
-                                          onsubmit="return confirm('Baglanti silinecek. Toplanan gecmis korunur. Emin misiniz?');">
-                                        <button class="btn btn-sm btn-outline-danger" type="submit">Sil</button>
+                                          data-confirm="@L["The connection will be deleted. Collected history is kept. Are you sure?"]">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">@L["Delete"]</button>
                                     </form>
                                 </td>
                             </tr>
@@ -102,30 +98,30 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small text-secondary" for="c-url">Adres (panelin koku)</label>
+                        <label class="form-label small text-secondary" for="c-url">@L["Address (panel root)"]</label>
                         <input class="form-control form-control-sm" id="c-url" name="BaseUrl" value="@input.BaseUrl"
                                placeholder="http://dokploy:3000" />
-                        <div class="form-text small">Sonuna <code>/api</code> eklemeyin.</div>
+                        <div class="form-text small">@L["Do not append"] <code>/api</code> @L["to the end."]</div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small text-secondary" for="c-key">API anahtari</label>
+                        <label class="form-label small text-secondary" for="c-key">@L["API key"]</label>
                         <input class="form-control form-control-sm" id="c-key" name="ApiKey" type="password"
                                autocomplete="off" />
                         @if (editing)
                         {
-                            <div class="form-text small">Bos birakirsaniz mevcut anahtar korunur.</div>
+                            <div class="form-text small">@L["Leave empty to keep the current key."]</div>
                         }
                     </div>
 
                     <div class="row g-2 mb-3">
                         <div class="col-6">
-                            <label class="form-label small text-secondary" for="c-timeout">Zaman asimi (sn)</label>
+                            <label class="form-label small text-secondary" for="c-timeout">@L["Timeout (s)"]</label>
                             <input class="form-control form-control-sm" id="c-timeout" name="TimeoutSeconds"
                                    type="number" min="5" max="120" value="@input.TimeoutSeconds" />
                         </div>
                         <div class="col-6">
-                            <label class="form-label small text-secondary" for="c-parallel">Es zamanli istek</label>
+                            <label class="form-label small text-secondary" for="c-parallel">@L["Concurrent requests"]</label>
                             <input class="form-control form-control-sm" id="c-parallel" name="MaxParallelRequests"
                                    type="number" min="1" max="16" value="@input.MaxParallelRequests" />
                         </div>
@@ -134,35 +130,32 @@
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="c-enabled" name="Enabled" value="true"
                                checked="@input.Enabled" />
-                        <label class="form-check-label small" for="c-enabled">Etkin (senkronizasyona dahil)</label>
+                        <label class="form-check-label small" for="c-enabled">@L["Enabled (included in sync)"]</label>
                     </div>
 
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="c-cert" name="AllowInvalidCertificates"
                                value="true" checked="@input.AllowInvalidCertificates" />
-                        <label class="form-check-label small" for="c-cert">Self-signed sertifikaya izin ver</label>
+                        <label class="form-check-label small" for="c-cert">@L["Allow self-signed certificates"]</label>
                     </div>
 
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="c-legacy" name="ForceLegacyDiscovery"
                                value="true" checked="@input.ForceLegacyDiscovery" />
-                        <label class="form-check-label small" for="c-legacy">Legacy toplama modunu zorla</label>
+                        <label class="form-check-label small" for="c-legacy">@L["Force legacy collection mode"]</label>
                     </div>
 
                     <div class="d-flex gap-2">
                         <button class="btn btn-brand btn-sm" type="submit">@(editing ? "Kaydet" : "Ekle")</button>
                         @if (editing)
                         {
-                            <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Vazgec</a>
+                            <a class="btn btn-outline-secondary btn-sm" asp-action="Index">@L["Cancel"]</a>
                         }
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="small text-secondary mt-2">
-            Baglanti sayisi arttikca Dokploy'a giden istek de artar: her baglanti icin ayri
-            polling yapilir. Kota/limit hesabini buna gore yapin.
-        </div>
+        <div class="small text-secondary mt-2">@L["The more connections you add, the more requests reach Dokploy: each connection is polled separately. Take this into account for quota and rate limits."]</div>
     </div>
 </div>

@@ -18,7 +18,7 @@
     let source = 'docker';
 
     function sourceLabel(value) {
-        return value === 'build' ? 'build logu' : 'container logu (docker)';
+        return dm.t(value === 'build' ? 'build log' : 'container log (docker)');
     }
 
     function markActiveSource() {
@@ -33,7 +33,7 @@
         titleEl.textContent = label || deploymentId;
         detailsLink.href = '/Deployments/Details/' + encodeURIComponent(deploymentId);
         viewer.innerHTML = '';
-        statusEl.textContent = 'yukleniyor…';
+        statusEl.textContent = dm.t('loading…');
         statusEl.className = 'small text-secondary';
         markActiveSource();
 
@@ -43,7 +43,7 @@
                 { headers: { 'Accept': 'application/json' } });
 
             if (!response.ok) {
-                statusEl.textContent = 'log alinamadi (HTTP ' + response.status + ')';
+                statusEl.textContent = dm.t('could not fetch log') + ' (HTTP ' + response.status + ')';
                 statusEl.className = 'small text-warning';
                 return;
             }
@@ -52,23 +52,23 @@
 
             if (!data.available) {
                 statusEl.textContent = sourceLabel(data.source) + ': '
-                    + (data.unavailableReason || 'Log okunamiyor.');
+                    + (data.unavailableReason || dm.t('Log cannot be read.'));
                 statusEl.className = 'small text-warning';
                 return;
             }
 
             if (!data.lines || data.lines.length === 0) {
-                statusEl.textContent = 'Log dosyasi bos.';
+                statusEl.textContent = dm.t('Log file is empty.');
                 statusEl.className = 'small text-secondary';
                 return;
             }
 
             dm.renderLogLines(viewer, data.lines);
-            statusEl.textContent = sourceLabel(data.source) + ' · son ' + data.lines.length + ' satir';
+            statusEl.textContent = sourceLabel(data.source) + ' · ' + dm.t('last {0} lines', data.lines.length);
             statusEl.className = 'small text-secondary';
             viewer.scrollTop = viewer.scrollHeight;
         } catch (e) {
-            statusEl.textContent = 'log alinamadi — sunucuya erisilemiyor';
+            statusEl.textContent = dm.t('could not fetch log') + ' — ' + dm.t('server unreachable');
             statusEl.className = 'small text-warning';
         }
     }

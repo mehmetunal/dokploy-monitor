@@ -1,9 +1,11 @@
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Infrastructure.Identity;
 using DokployMonitor.Web.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace DokployMonitor.Web.Controllers;
 
@@ -15,6 +17,7 @@ public sealed class AccountController(
     SignInManager<ApplicationUser> signInManager,
     UserManager<ApplicationUser> userManager,
     IValidator<LoginInput> validator,
+    IStringLocalizer<SharedResource> L,
     ILogger<AccountController> logger) : Controller
 {
     [HttpGet]
@@ -50,7 +53,7 @@ public sealed class AccountController(
         if (user is null)
         {
             // Kullanici var mi yok mu bilgisini sizdirmamak icin tek ve ayni mesaj.
-            ModelState.AddModelError(string.Empty, "E-posta veya parola hatali.");
+            ModelState.AddModelError(string.Empty, L["Incorrect email or password."]);
             return View(input);
         }
 
@@ -60,14 +63,14 @@ public sealed class AccountController(
         if (result.IsLockedOut)
         {
             logger.LogWarning("Hesap gecici olarak kilitli: {Email}", input.Email);
-            ModelState.AddModelError(string.Empty, "Cok fazla hatali deneme. Bir sure sonra tekrar deneyin.");
+            ModelState.AddModelError(string.Empty, L["Too many failed attempts. Try again later."]);
             return View(input);
         }
 
         if (!result.Succeeded)
         {
             logger.LogWarning("Basarisiz giris denemesi: {Email}", input.Email);
-            ModelState.AddModelError(string.Empty, "E-posta veya parola hatali.");
+            ModelState.AddModelError(string.Empty, L["Incorrect email or password."]);
             return View(input);
         }
 
@@ -127,7 +130,7 @@ public sealed class AccountController(
 
         if (!await userManager.CheckPasswordAsync(user, input.CurrentPassword ?? string.Empty))
         {
-            ModelState.AddModelError(nameof(input.CurrentPassword), "Mevcut parola hatali.");
+            ModelState.AddModelError(nameof(input.CurrentPassword), L["The current password is incorrect."]);
         }
 
         // Not: ekran zorunlu bir onay adimi; ayni e-posta/parola yeniden girilebilir.
@@ -163,7 +166,7 @@ public sealed class AccountController(
         await signInManager.RefreshSignInAsync(user);
 
         logger.LogInformation("Kimlik bilgileri guncellendi: {Email}", user.Email);
-        TempData["Message"] = "Kimlik bilgileriniz guncellendi.";
+        TempData["Message"] = L["Your credentials have been updated."].Value;
 
         return RedirectToAction("Index", "Dashboard");
     }

@@ -1,6 +1,8 @@
 using System.Net.Http.Headers;
 using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Core.Dokploy;
+using DokployMonitor.Infrastructure.Localization;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace DokployMonitor.Infrastructure.Dokploy;
@@ -14,6 +16,7 @@ namespace DokployMonitor.Infrastructure.Dokploy;
 /// </summary>
 public sealed class DokployClientFactory(
     IHttpClientFactory httpClientFactory,
+    IStringLocalizer<SharedResource> text,
     ILogger<DokployApiClient> logger) : IDokployClientFactory
 {
     public const string ClientName = "dokploy";
@@ -31,6 +34,6 @@ public sealed class DokployClientFactory(
         // Zaman asimini direnc katmani yonetiyor.
         client.Timeout = Timeout.InfiniteTimeSpan;
 
-        return new DokployApiClient(client, connection, logger);
+        return new DokployApiClient(client, connection, text, logger);
     }
 }

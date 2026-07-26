@@ -1,3 +1,4 @@
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Core.Dokploy;
 using DokployMonitor.Infrastructure.Identity;
@@ -7,6 +8,7 @@ using DokployMonitor.Web.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Microsoft.EntityFrameworkCore;
 
 namespace DokployMonitor.Web.Controllers;
@@ -22,6 +24,7 @@ public sealed class ConnectionsController(
     IDokployClientFactory clientFactory,
     MonitorState state,
     IValidator<ConnectionInput> validator,
+    IStringLocalizer<SharedResource> L,
     ILogger<ConnectionsController> logger) : Controller
 {
     /// <summary><paramref name="edit"/> verilirse form o baglantiyla doldurulur (anahtar haric).</summary>
@@ -63,7 +66,7 @@ public sealed class ConnectionsController(
 
         if (duplicate)
         {
-            ModelState.AddModelError(nameof(input.Name), "Bu adla baska bir baglanti var.");
+            ModelState.AddModelError(nameof(input.Name), L["Another connection with this name already exists."]);
         }
 
         if (!ModelState.IsValid)
@@ -91,7 +94,7 @@ public sealed class ConnectionsController(
                 CreatedAt = DateTimeOffset.UtcNow,
             });
 
-            TempData["Message"] = $"'{input.Name}' baglantisi eklendi.";
+            TempData["Message"] = L["Connection '{0}' added.", input.Name!].Value;
         }
         else
         {
@@ -114,10 +117,11 @@ public sealed class ConnectionsController(
                 state.ForgetQueue(existing.Id);
             }
 
-            TempData["Message"] = $"'{input.Name}' baglantisi guncellendi.";
+            TempData["Message"] = L["Connection '{0}' updated.", input.Name!].Value;
         }
 
         await db.SaveChangesAsync(ct);
+        await connections.InvalidateNamesAsync(ct);
         state.RequestSync(SyncTrigger.UserAction);
 
         logger.LogInformation(
@@ -147,7 +151,7 @@ public sealed class ConnectionsController(
         }
         else
         {
-            TempData["Error"] = $"'{connection.Name}' basarisiz: {health.Error ?? "erisilemedi"}";
+            TempData["Error"] = $"'{connection.Name}' basarisiz: {health.Error ?? L["unreachable"]}";
         }
 
         return RedirectToAction(nameof(Index));
@@ -169,12 +173,13 @@ public sealed class ConnectionsController(
 
         db.Connections.Remove(connection);
         await db.SaveChangesAsync(ct);
+        await connections.InvalidateNamesAsync(ct);
         state.ForgetQueue(id);
 
         logger.LogWarning(
             "Dokploy baglantisi silindi: {Name} (islem: {Actor})", connection.Name, User.Identity?.Name);
 
-        TempData["Message"] = $"'{connection.Name}' silindi. Toplanan deployment gecmisi korundu.";
+        TempData["Message"] = L["'{0}' deleted. Collected deployment history was kept.", connection.Name].Value;
         return RedirectToAction(nameof(Index));
     }
 

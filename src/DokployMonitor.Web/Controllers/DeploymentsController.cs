@@ -1,3 +1,4 @@
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Core.Deployments;
 using DokployMonitor.Infrastructure.Identity;
@@ -7,6 +8,7 @@ using DokployMonitor.Web.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace DokployMonitor.Web.Controllers;
@@ -19,6 +21,7 @@ public sealed class DeploymentsController(
     ConnectionService connections,
     MonitorState state,
     IOptions<LogOptions> logOptions,
+    IStringLocalizer<SharedResource> L,
     ILogger<DeploymentsController> logger) : Controller
 {
     private readonly LogOptions _logOptions = logOptions.Value;
@@ -38,9 +41,14 @@ public sealed class DeploymentsController(
             ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
         }
 
-        IReadOnlyList<TrackedDeployment> results = validation.IsValid
-            ? await dashboard.SearchAsync(filter, ct)
-            : [];
+        IReadOnlyList<TrackedDeployment> results = [];
+        var page = PageInfo.Create(filter.Page, filter.Size, 0);
+
+        if (validation.IsValid)
+        {
+            (var rows, page) = await dashboard.SearchAsync(filter, ct);
+            results = rows;
+        }
 
         return View(new DeploymentHistoryViewModel
         {
@@ -48,6 +56,7 @@ public sealed class DeploymentsController(
             Projects = await dashboard.GetProjectNamesAsync(ct),
             Filter = filter,
             ConnectionNames = await connections.GetNamesAsync(ct),
+            Page = page,
         });
     }
 
@@ -183,14 +192,14 @@ public sealed class DeploymentsController(
         {
             await client.KillDeploymentAsync(id, ct);
             state.RequestSync(SyncTrigger.UserAction);
-            TempData["Message"] = "Deployment durdurma istegi gonderildi.";
+            TempData["Message"] = L["Stop request sent."].Value;
             logger.LogInformation(
                 "Deployment durduruldu: {DeploymentId} (islem: {Actor})", id, User.Identity?.Name);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Deployment durdurulamadi: {DeploymentId}", id);
-            TempData["Error"] = $"Durdurulamadi: {ex.Message}";
+            TempData["Error"] = L["Could not stop: {0}", ex.Message].Value;
         }
 
         return RedirectToAction(nameof(Details), new { id });
@@ -245,14 +254,14 @@ public sealed class DeploymentsController(
             }
             else
             {
-                TempData["Error"] = "Bu deployment turu panelden yeniden baslatilamiyor.";
+                TempData["Error"] = L["This deployment type cannot be restarted from the panel."].Value;
                 return RedirectToAction(nameof(Details), new { id });
             }
 
             state.RequestSync(SyncTrigger.UserAction);
             TempData["Message"] = replay
-                ? "Replay istegi kuyruga eklendi. Not: Dokploy kaynagin guncel halini derler."
-                : "Yeniden deploy istegi kuyruga eklendi.";
+                ? L["Replay request queued. Note: Dokploy builds the current source."].Value
+                : L["Redeploy request queued."].Value;
 
             logger.LogInformation(
                 "{Action} tetiklendi: {DeploymentId} (islem: {Actor})",
@@ -263,7 +272,7 @@ public sealed class DeploymentsController(
         catch (Exception ex)
         {
             logger.LogError(ex, "{Action} basarisiz: {DeploymentId}", replay ? "Replay" : "Redeploy", id);
-            TempData["Error"] = $"{(replay ? "Replay" : "Yeniden deploy")} basarisiz: {ex.Message}";
+            TempData["Error"] = L["{0} failed: {1}", replay ? "Replay" : L["Redeploy"].Value, ex.Message];
         }
 
         return RedirectToAction(nameof(Details), new { id });
@@ -284,8 +293,8 @@ public sealed class DeploymentsController(
         if (connection is null)
         {
             TempData["Error"] = deployment.ConnectionId is null
-                ? "Bu kaydin hangi Dokploy baglantisindan geldigi bilinmiyor; birden fazla baglanti tanimli oldugu icin islem yapilamadi."
-                : "Kaydin baglantisi bulunamadi ya da devre disi birakilmis.";
+                ? L["The connection this record came from is unknown; the action was skipped because several connections are configured."].Value
+                : L["The record's connection was not found or is disabled."].Value;
 
             return null;
         }

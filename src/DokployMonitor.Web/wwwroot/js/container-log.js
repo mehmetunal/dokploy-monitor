@@ -12,7 +12,7 @@
 
     async function load() {
         button.disabled = true;
-        statusEl.textContent = 'yukleniyor…';
+        statusEl.textContent = dm.t('loading…');
         statusEl.className = 'small text-secondary';
         viewer.innerHTML = '';
 
@@ -22,7 +22,7 @@
                 { headers: { 'Accept': 'application/json' } });
 
             if (!response.ok) {
-                statusEl.textContent = 'alinamadi (HTTP ' + response.status + ')';
+                statusEl.textContent = dm.t('could not fetch log') + ' (HTTP ' + response.status + ')';
                 statusEl.className = 'small text-warning';
                 return;
             }
@@ -30,25 +30,25 @@
             const data = await response.json();
 
             if (!data.available) {
-                statusEl.textContent = data.unavailableReason || 'Container logu okunamiyor.';
+                statusEl.textContent = data.unavailableReason || dm.t('Log cannot be read.');
                 statusEl.className = 'small text-warning';
                 return;
             }
 
             if (!data.lines || data.lines.length === 0) {
-                statusEl.textContent = 'container henuz log yazmamis';
+                statusEl.textContent = dm.t('container has not written any log yet');
                 return;
             }
 
             dm.renderLogLines(viewer, data.lines);
-            statusEl.textContent = 'son ' + data.lines.length + ' satir';
+            statusEl.textContent = dm.t('last {0} lines', data.lines.length);
             viewer.scrollTop = viewer.scrollHeight;
         } catch (e) {
-            statusEl.textContent = 'sunucuya erisilemiyor';
+            statusEl.textContent = dm.t('server unreachable');
             statusEl.className = 'small text-warning';
         } finally {
             button.disabled = false;
-            button.textContent = 'Tazele';
+            button.textContent = dm.t('Refresh');
         }
     }
 

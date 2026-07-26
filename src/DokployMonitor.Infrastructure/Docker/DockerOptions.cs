@@ -1,4 +1,6 @@
+using DokployMonitor.Infrastructure.Localization;
 using FluentValidation;
+using Microsoft.Extensions.Localization;
 
 namespace DokployMonitor.Infrastructure.Docker;
 
@@ -26,24 +28,24 @@ public sealed class DockerOptions
 
 public sealed class DockerOptionsValidator : AbstractValidator<DockerOptions>
 {
-    public DockerOptionsValidator()
+    public DockerOptionsValidator(IStringLocalizer<SharedResource> text)
     {
         RuleFor(options => options.SocketPath)
             .NotEmpty()
-            .WithMessage("Docker soket yolu zorunlu (varsayilan /var/run/docker.sock).")
+            .WithMessage(_ => text["The Docker socket path is required (default /var/run/docker.sock)."])
             .When(options => options.Enabled);
 
         RuleFor(options => options.ApiVersion)
             .Matches("^v[0-9]+\\.[0-9]+$")
-            .WithMessage("Surum `v1.44` biciminde olmali.")
+            .WithMessage(_ => text["The version must look like `v1.44`."])
             .When(options => options.Enabled);
 
         RuleFor(options => options.TimeoutSeconds)
             .InclusiveBetween(2, 120)
-            .WithMessage("2-120 saniye arasinda olmali.");
+            .WithMessage(_ => text["Must be between 2 and 120 seconds."]);
 
         RuleFor(options => options.MaxTailLines)
             .InclusiveBetween(100, 50_000)
-            .WithMessage("100-50000 arasinda olmali.");
+            .WithMessage(_ => text["Must be between 100 and 50000."]);
     }
 }

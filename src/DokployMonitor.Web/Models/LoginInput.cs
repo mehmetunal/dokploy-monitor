@@ -1,4 +1,6 @@
+using DokployMonitor.Infrastructure.Localization;
 using FluentValidation;
+using Microsoft.Extensions.Localization;
 
 namespace DokployMonitor.Web.Models;
 
@@ -13,13 +15,13 @@ public sealed class LoginInput
 
 public sealed class LoginInputValidator : AbstractValidator<LoginInput>
 {
-    public LoginInputValidator()
+    public LoginInputValidator(IStringLocalizer<SharedResource> text)
     {
         RuleFor(input => input.Email)
-            .NotEmpty().WithMessage("E-posta zorunlu.")
-            .EmailAddress().WithMessage("Gecerli bir e-posta adresi girin.");
+            .NotEmpty().WithMessage(_ => text["Email is required."])
+            .EmailAddress().WithMessage(_ => text["Enter a valid email address."]);
 
         RuleFor(input => input.Password)
-            .NotEmpty().WithMessage("Parola zorunlu.");
+            .NotEmpty().WithMessage(_ => text["Password is required."]);
     }
 }

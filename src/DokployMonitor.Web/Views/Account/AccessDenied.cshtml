@@ -1,16 +1,12 @@
 @using DokployMonitor.Infrastructure.Identity
 @{
-    ViewData["Title"] = "Yetkiniz Yok";
+    ViewData["Title"] = L["Access Denied"].Value;
 }
 
 <div class="row justify-content-center">
     <div class="col-lg-6 text-center py-5">
-        <h1 class="h4 mb-2">Bu islem icin yetkiniz yok</h1>
-        <p class="text-secondary">
-            Kullanici yonetimi ve deployment mudahalesi (Durdur / Yeniden Deploy)
-            yalnizca <strong>@MonitorRoles.SuperAdmin</strong> rolundeki hesaplarda aciktir.
-            Panolari, gecmisi, hatalari ve loglari gormeye devam edebilirsiniz.
-        </p>
-        <a class="btn btn-brand btn-sm" asp-controller="Dashboard" asp-action="Index">Canli panoya don</a>
+        <h1 class="h4 mb-2">@L["You are not authorized for this action"]</h1>
+        <p class="text-secondary">@L["User management and deployment actions (Stop / Redeploy / Replay) are available only to accounts with the SuperAdmin role. You can still view the dashboards, history, errors and logs."]</p>
+        <a class="btn btn-brand btn-sm" asp-controller="Dashboard" asp-action="Index">@L["Back to live dashboard"]</a>
     </div>
 </div>

@@ -1,9 +1,11 @@
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Infrastructure.Identity;
 using DokployMonitor.Web.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Microsoft.EntityFrameworkCore;
 
 namespace DokployMonitor.Web.Controllers;
@@ -16,6 +18,7 @@ namespace DokployMonitor.Web.Controllers;
 public sealed class UsersController(
     UserManager<ApplicationUser> userManager,
     IValidator<CreateUserInput> validator,
+    IStringLocalizer<SharedResource> L,
     ILogger<UsersController> logger) : Controller
 {
     public async Task<IActionResult> Index(CancellationToken ct) =>
@@ -33,7 +36,7 @@ public sealed class UsersController(
 
         if (await userManager.FindByEmailAsync(input.Email ?? string.Empty) is not null)
         {
-            ModelState.AddModelError(nameof(input.Email), "Bu e-posta ile bir kullanici zaten var.");
+            ModelState.AddModelError(nameof(input.Email), L["A user with this email already exists."]);
         }
 
         if (!ModelState.IsValid)
@@ -70,7 +73,7 @@ public sealed class UsersController(
             input.Role,
             User.Identity?.Name);
 
-        TempData["Message"] = $"{user.Email} olusturuldu ({input.Role}).";
+        TempData["Message"] = L["{0} created ({1}).", user.Email!, input.Role].Value;
         return RedirectToAction(nameof(Index));
     }
 
@@ -88,7 +91,7 @@ public sealed class UsersController(
         // Kendi hesabini kilitleyip panelden kilitlenmeyi engelle.
         if (string.Equals(user.Id, userManager.GetUserId(User), StringComparison.Ordinal))
         {
-            TempData["Error"] = "Kendi hesabinizi kilitleyemezsiniz.";
+            TempData["Error"] = L["You cannot lock your own account."].Value;
             return RedirectToAction(nameof(Index));
         }
 
@@ -96,8 +99,8 @@ public sealed class UsersController(
         await userManager.SetLockoutEndDateAsync(user, locked ? null : DateTimeOffset.UtcNow.AddYears(100));
 
         TempData["Message"] = locked
-            ? $"{user.Email} kilidi kaldirildi."
-            : $"{user.Email} kilitlendi.";
+            ? L["{0} unlocked.", user.Email!].Value
+            : L["{0} locked.", user.Email!].Value;
 
         logger.LogInformation(
             "Kullanici kilit durumu degisti: {Email} -> {State} (islem: {Actor})",

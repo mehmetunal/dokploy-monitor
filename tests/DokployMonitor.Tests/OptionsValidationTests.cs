@@ -1,13 +1,17 @@
 using DokployMonitor.Infrastructure.Dokploy;
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Infrastructure.Logs;
 using DokployMonitor.Infrastructure.Validation;
 using DokployMonitor.Web.Models;
 using DokployMonitor.Web.Options;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace DokployMonitor.Tests;
+
+// Validator'lar mesajlari localizer'dan alir; testler kaynak dil davranisini kullanir.
 
 /// <summary>
 /// Yapilandirma hatalari uygulama acilirken yakalanmali; yanlis ayarla ayaga kalkan bir
@@ -18,7 +22,7 @@ public sealed class OptionsValidationTests
     [Fact]
     public void Dokploy_ayarlari_gecerli_degerleri_kabul_eder()
     {
-        var result = new DokployOptionsValidator().Validate(new DokployOptions
+        var result = new DokployOptionsValidator(new SourceLanguageLocalizer()).Validate(new DokployOptions
         {
             BaseUrl = "http://dokploy:3000",
             ApiKey = "dokploy_monitor_abc",
@@ -34,7 +38,7 @@ public sealed class OptionsValidationTests
     [InlineData("http://dokploy:3000", "", nameof(DokployOptions.ApiKey))]
     public void Dokploy_ayarlari_hatali_degerleri_reddeder(string baseUrl, string apiKey, string expectedProperty)
     {
-        var result = new DokployOptionsValidator().Validate(new DokployOptions
+        var result = new DokployOptionsValidator(new SourceLanguageLocalizer()).Validate(new DokployOptions
         {
             BaseUrl = baseUrl,
             ApiKey = apiKey,
@@ -47,7 +51,7 @@ public sealed class OptionsValidationTests
     [Fact]
     public void Log_ayarlari_mantiksiz_araliklari_reddeder()
     {
-        var result = new LogOptionsValidator().Validate(new LogOptions
+        var result = new LogOptionsValidator(new SourceLanguageLocalizer()).Validate(new LogOptions
         {
             DefaultTailLines = 5,
             PollIntervalMs = 10,
@@ -61,13 +65,13 @@ public sealed class OptionsValidationTests
     [Fact]
     public void Monitor_varsayilanlari_gecerlidir()
     {
-        Assert.True(new MonitorOptionsValidator().Validate(new MonitorOptions()).IsValid);
+        Assert.True(new MonitorOptionsValidator(new SourceLanguageLocalizer()).Validate(new MonitorOptions()).IsValid);
     }
 
     [Fact]
     public void Aktif_polling_araligi_bos_araliktan_uzun_olamaz()
     {
-        var result = new MonitorOptionsValidator().Validate(new MonitorOptions
+        var result = new MonitorOptionsValidator(new SourceLanguageLocalizer()).Validate(new MonitorOptions
         {
             IdlePollSeconds = 5,
             ActivePollSeconds = 30,
@@ -80,7 +84,7 @@ public sealed class OptionsValidationTests
     [Fact]
     public void Webhook_tokeni_bos_olabilir_ama_kisa_olamaz()
     {
-        var validator = new WebhookOptionsValidator();
+        var validator = new WebhookOptionsValidator(new SourceLanguageLocalizer());
 
         Assert.True(validator.Validate(new WebhookOptions { Token = null }).IsValid);
         Assert.True(validator.Validate(new WebhookOptions { Token = "" }).IsValid);
@@ -91,19 +95,19 @@ public sealed class OptionsValidationTests
     [Fact]
     public void Deployment_filtresi_bilinmeyen_durumu_reddeder()
     {
-        var validator = new DeploymentFilterValidator();
+        var validator = new DeploymentFilterValidator(new SourceLanguageLocalizer());
 
         Assert.True(validator.Validate(new DeploymentFilter()).IsValid);
         Assert.True(validator.Validate(new DeploymentFilter { Status = "ERROR" }).IsValid);
         Assert.False(validator.Validate(new DeploymentFilter { Status = "failed" }).IsValid);
-        Assert.False(validator.Validate(new DeploymentFilter { Take = 5000 }).IsValid);
+        Assert.False(validator.Validate(new DeploymentFilter { Page = 0 }).IsValid);
         Assert.False(validator.Validate(new DeploymentFilter { Q = new string('x', 201) }).IsValid);
     }
 
     [Fact]
     public void Deployment_filtresi_ters_tarih_araligini_reddeder()
     {
-        var validator = new DeploymentFilterValidator();
+        var validator = new DeploymentFilterValidator(new SourceLanguageLocalizer());
         var from = new DateOnly(2026, 7, 20);
         var to = new DateOnly(2026, 7, 10);
 
@@ -132,7 +136,7 @@ public sealed class OptionsValidationTests
     [Fact]
     public void Hata_filtresi_yalnizca_tanimli_gun_degerlerini_kabul_eder()
     {
-        var validator = new ErrorFilterValidator();
+        var validator = new ErrorFilterValidator(new SourceLanguageLocalizer());
 
         foreach (var days in ErrorFilterValidator.AllowedDays)
         {
@@ -160,6 +164,9 @@ public sealed class OptionsValidationTests
     public void Options_boru_hatti_gecersiz_yapilandirmada_hata_firlatir()
     {
         var services = new ServiceCollection();
+
+        // Validator'lar mesajlari localizer'dan alir; testte kaynak dil davranisi yeterli.
+        services.AddSingleton<IStringLocalizer<SharedResource>, SourceLanguageLocalizer>();
         services.AddValidatorsFromAssemblyContaining<DokployOptionsValidator>(ServiceLifetime.Singleton);
         services.AddOptions<DokployOptions>()
             .Configure(options =>
@@ -177,4 +184,18 @@ public sealed class OptionsValidationTests
         Assert.Contains("DokployOptions.BaseUrl", string.Join(" ", exception.Failures));
         Assert.Contains("DokployOptions.ApiKey", string.Join(" ", exception.Failures));
     }
+}
+
+/// <summary>
+/// Pass-through localizer for tests: returns the key itself, which is exactly how the
+/// application behaves for the source language (English).
+/// </summary>
+public sealed class SourceLanguageLocalizer : IStringLocalizer<SharedResource>
+{
+    public LocalizedString this[string name] => new(name, name, resourceNotFound: false);
+
+    public LocalizedString this[string name, params object[] arguments] =>
+        new(name, string.Format(name, arguments), resourceNotFound: false);
+
+    public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => [];
 }

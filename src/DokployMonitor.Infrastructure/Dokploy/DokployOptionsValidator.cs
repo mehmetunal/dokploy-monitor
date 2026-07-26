@@ -1,4 +1,6 @@
+using DokployMonitor.Infrastructure.Localization;
 using FluentValidation;
+using Microsoft.Extensions.Localization;
 
 namespace DokployMonitor.Infrastructure.Dokploy;
 
@@ -8,33 +10,33 @@ namespace DokployMonitor.Infrastructure.Dokploy;
 /// </summary>
 public sealed class DokployOptionsValidator : AbstractValidator<DokployOptions>
 {
-    public DokployOptionsValidator()
+    public DokployOptionsValidator(IStringLocalizer<SharedResource> text)
     {
         RuleFor(options => options.BaseUrl)
             .NotEmpty()
-            .WithMessage("Zorunlu. Ayni sunucuda ic ag adresi tercih edilir: http://dokploy:3000");
+            .WithMessage(_ => text["Required. On the same host the internal address is preferred: http://dokploy:3000"]);
 
         RuleFor(options => options.BaseUrl)
             .Must(BeAbsoluteHttpUrl)
-            .WithMessage("Mutlak bir http/https adresi olmali (or. https://dokploy.sirketiniz.com).")
+            .WithMessage(_ => text["Must be an absolute http/https address (e.g. https://dokploy.example.com)."])
             .When(options => !string.IsNullOrWhiteSpace(options.BaseUrl));
 
         RuleFor(options => options.BaseUrl)
             .Must(url => !url.TrimEnd('/').EndsWith("/api", StringComparison.OrdinalIgnoreCase))
-            .WithMessage("Panelin koku yazilmali, sonuna /api eklenmemeli; istemci /api/ onekini kendisi ekler.")
+            .WithMessage(_ => text["Enter the panel root without a trailing /api; the client appends /api/ itself."])
             .When(options => !string.IsNullOrWhiteSpace(options.BaseUrl));
 
         RuleFor(options => options.ApiKey)
             .NotEmpty()
-            .WithMessage("Zorunlu. Dokploy > Settings > API Keys > Generate API Key ile uretilir.");
+            .WithMessage(_ => text["Required. Create it with Dokploy > Settings > API Keys > Generate API Key."]);
 
         RuleFor(options => options.TimeoutSeconds)
             .InclusiveBetween(5, 120)
-            .WithMessage("5-120 saniye arasinda olmali.");
+            .WithMessage(_ => text["Must be between 5 and 120 seconds."]);
 
         RuleFor(options => options.MaxParallelRequests)
             .InclusiveBetween(1, 16)
-            .WithMessage("1-16 arasinda olmali; yuksek deger legacy modda Dokploy'u yorar.");
+            .WithMessage(_ => text["Must be between 1 and 16; a high value strains Dokploy in legacy mode."]);
     }
 
     private static bool BeAbsoluteHttpUrl(string value) =>

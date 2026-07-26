@@ -3,6 +3,7 @@ using System.Text;
 using DokployMonitor.Core.Deployments;
 using DokployMonitor.Core.Dokploy;
 using DokployMonitor.Infrastructure.Dokploy;
+using DokployMonitor.Infrastructure.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -243,7 +244,8 @@ public class DokployApiClientTests
         var httpClient = new HttpClient(handler) { BaseAddress = connection.ApiBaseUri() };
         httpClient.DefaultRequestHeaders.Add("x-api-key", connection.ApiKey);
 
-        return new DokployApiClient(httpClient, connection, NullLogger<DokployApiClient>.Instance);
+        return new DokployApiClient(
+            httpClient, connection, new SourceLanguageLocalizer(), NullLogger<DokployApiClient>.Instance);
     }
 
     private sealed class StubHandler(IReadOnlyList<(string Path, HttpStatusCode Status, string Body)> routes)

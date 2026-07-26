@@ -1,5 +1,6 @@
 using DokployMonitor.Core.Dashboard;
 using DokployMonitor.Core.Deployments;
+using DokployMonitor.Infrastructure.Caching;
 using DokployMonitor.Infrastructure.Persistence;
 using DokployMonitor.Web.Models;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,7 @@ public sealed class DashboardQueryService(
     MonitorDbContext db,
     MonitorState state,
     ConnectionService connections,
+    CacheService cache,
     IOptions<Web.Options.MonitorOptions> options)
 {
     private readonly Web.Options.MonitorOptions _options = options.Value;
@@ -204,8 +206,13 @@ public sealed class DashboardQueryService(
             .Take(take)
             .ToListAsync(ct);
 
-    /// <summary>Filtreli deployment listesi (gecmis ekrani).</summary>
-    public async Task<List<TrackedDeployment>> SearchAsync(DeploymentFilter filter, CancellationToken ct = default)
+    /// <summary>
+    /// Filtreli, sayfalanmis deployment listesi (gecmis ekrani). Toplam sayi da doner:
+    /// pager'in sayfa sayisini hesaplamasi icin gerekiyor.
+    /// </summary>
+    public async Task<(List<TrackedDeployment> Rows, PageInfo Page)> SearchAsync(
+        DeploymentFilter filter,
+        CancellationToken ct = default)
     {
         var q = db.Deployments.AsQueryable();
 
@@ -244,7 +251,14 @@ public sealed class DashboardQueryService(
                 || (d.ErrorMessage != null && EF.Functions.Like(d.ErrorMessage, $"%{term}%")));
         }
 
-        return await q.OrderByDescending(d => d.CreatedAt).Take(filter.Take).ToListAsync(ct);
+        var page = PageInfo.Create(filter.Page, filter.Size, await q.CountAsync(ct));
+
+        var rows = await q.OrderByDescending(d => d.CreatedAt)
+            .Skip(page.Skip)
+            .Take(page.Size)
+            .ToListAsync(ct);
+
+        return (rows, page);
     }
 
     /// <summary>Hata analizi ekranlarinin ortak temel sorgusu.</summary>
@@ -271,8 +285,14 @@ public sealed class DashboardQueryService(
         return q;
     }
 
-    /// <summary>Filtre acilir kutulari icin proje adlari.</summary>
+    /// <summary>
+    /// Filtre acilir kutulari icin proje adlari. Her ekran cizimde ayni sorgu
+    /// tekrarlandigi icin onbelleklenir (bkz. CacheKeys.ProjectNames).
+    /// </summary>
     public Task<List<string>> GetProjectNamesAsync(CancellationToken ct = default) =>
+        cache.GetOrCreateAsync(CacheKeys.ProjectNames, LoadProjectNamesAsync, ct: ct);
+
+    private Task<List<string>> LoadProjectNamesAsync(CancellationToken ct) =>
         db.Deployments
             .Where(d => d.ProjectName != null)
             .Select(d => d.ProjectName!)

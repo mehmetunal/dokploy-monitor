@@ -1,4 +1,6 @@
+using DokployMonitor.Infrastructure.Localization;
 using FluentValidation;
+using Microsoft.Extensions.Localization;
 
 namespace DokployMonitor.Web.Options;
 
@@ -8,36 +10,36 @@ namespace DokployMonitor.Web.Options;
 /// </summary>
 public sealed class MonitorOptionsValidator : AbstractValidator<MonitorOptions>
 {
-    public MonitorOptionsValidator()
+    public MonitorOptionsValidator(IStringLocalizer<SharedResource> text)
     {
         RuleFor(options => options.IdlePollSeconds)
             .InclusiveBetween(2, 3600)
-            .WithMessage("2-3600 saniye arasinda olmali.");
+            .WithMessage(_ => text["Must be between 2 and 3600 seconds."]);
 
         RuleFor(options => options.ActivePollSeconds)
             .InclusiveBetween(1, 600)
-            .WithMessage("1-600 saniye arasinda olmali.");
+            .WithMessage(_ => text["Must be between 1 and 600 seconds."]);
 
         RuleFor(options => options.ActivePollSeconds)
             .LessThanOrEqualTo(options => options.IdlePollSeconds)
-            .WithMessage("Aktif deployment varken bos zamandan daha seyrek sorgulanmamali; "
-                + "IdlePollSeconds degerinden buyuk olamaz.");
+            .WithMessage("Must not be polled less often than when idle; "
+                + "it cannot exceed IdlePollSeconds.");
 
         RuleFor(options => options.QueuePollSeconds)
             .InclusiveBetween(2, 3600)
-            .WithMessage("2-3600 saniye arasinda olmali.");
+            .WithMessage(_ => text["Must be between 2 and 3600 seconds."]);
 
         RuleFor(options => options.RecentCount)
             .InclusiveBetween(5, 500)
-            .WithMessage("5-500 arasinda olmali.");
+            .WithMessage(_ => text["Must be between 5 and 500."]);
 
         RuleFor(options => options.RetentionDays)
             .InclusiveBetween(0, 3650)
-            .WithMessage("0-3650 gun arasinda olmali (0 = hic silme).");
+            .WithMessage(_ => text["Must be between 0 and 3650 days (0 = never delete)."]);
 
         RuleFor(options => options.FreshFinishWindowMinutes)
             .InclusiveBetween(1, 1440)
-            .WithMessage("1-1440 dakika arasinda olmali.");
+            .WithMessage(_ => text["Must be between 1 and 1440 minutes."]);
     }
 }
 
@@ -47,12 +49,12 @@ public sealed class MonitorOptionsValidator : AbstractValidator<MonitorOptions>
 /// </summary>
 public sealed class WebhookOptionsValidator : AbstractValidator<WebhookOptions>
 {
-    public WebhookOptionsValidator()
+    public WebhookOptionsValidator(IStringLocalizer<SharedResource> text)
     {
         RuleFor(options => options.Token)
             .MinimumLength(16)
-            .WithMessage("Tanimliysa en az 16 karakter olmali (or. `openssl rand -hex 32`). "
-                + "Webhook'u kapatmak icin tamamen bos birakin.")
+            .WithMessage("If set it must be at least 16 characters (e.g. `openssl rand -hex 32`). "
+                + "Leave it completely empty to disable the webhook.")
             .When(options => !string.IsNullOrEmpty(options.Token));
     }
 }

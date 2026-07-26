@@ -1,4 +1,5 @@
 using DokployMonitor.Core.Dokploy;
+using DokployMonitor.Infrastructure.Caching;
 using DokployMonitor.Infrastructure.Dokploy;
 using DokployMonitor.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ namespace DokployMonitor.Web.Services;
 /// </summary>
 public sealed class ConnectionService(
     MonitorDbContext db,
+    CacheService cache,
     IOptions<DokployOptions> dokployOptions,
     ILogger<ConnectionService> logger)
 {
@@ -26,12 +28,22 @@ public sealed class ConnectionService(
             .OrderBy(connection => connection.Name)
             .ToListAsync(ct);
 
-    /// <summary>Ekranlarda kimlik yerine ad gostermek icin: baglantiId -> ad.</summary>
-    public async Task<Dictionary<string, string>> GetNamesAsync(CancellationToken ct = default) =>
-        await db.Connections.ToDictionaryAsync(
-            connection => connection.Id,
-            connection => connection.Name,
-            ct);
+    /// <summary>
+    /// Ekranlarda kimlik yerine ad gostermek icin: baglantiId -> ad.
+    /// Pano her 5 saniyede bir cizildigi icin onbelleklenir (bkz. CacheKeys.ConnectionNames).
+    /// </summary>
+    public Task<Dictionary<string, string>> GetNamesAsync(CancellationToken ct = default) =>
+        cache.GetOrCreateAsync(
+            CacheKeys.ConnectionNames,
+            token => db.Connections.ToDictionaryAsync(
+                connection => connection.Id,
+                connection => connection.Name,
+                token),
+            ct: ct);
+
+    /// <summary>Baglanti eklendi/degisti/silindi: ad onbellegini dusur.</summary>
+    public Task InvalidateNamesAsync(CancellationToken ct = default) =>
+        cache.RemoveAsync(CacheKeys.ConnectionNames, ct);
 
     /// <summary>
     /// Ortam degiskenlerindeki baglantiyi (varsa) veritabanina tasir ve eski deployment

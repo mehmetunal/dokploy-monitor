@@ -1,6 +1,7 @@
 using System.Globalization;
 using DokployMonitor.Core.Deployments;
 using DokployMonitor.Core.Dokploy;
+using DokployMonitor.Core.Localization;
 using DokployMonitor.Core.Notifications;
 using DokployMonitor.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -17,6 +18,7 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
     : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<DokployConnection> Connections => Set<DokployConnection>();
+    public DbSet<Translation> Translations => Set<Translation>();
     public DbSet<TrackedDeployment> Deployments => Set<TrackedDeployment>();
     public DbSet<DeploymentEvent> DeploymentEvents => Set<DeploymentEvent>();
     public DbSet<ErrorSignature> ErrorSignatures => Set<ErrorSignature>();
@@ -42,6 +44,15 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
             entity.Property(c => c.Id).HasMaxLength(64);
             entity.Property(c => c.Name).HasMaxLength(128);
             entity.HasIndex(c => c.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<Translation>(entity =>
+        {
+            entity.ToTable("Translations");
+            entity.HasKey(translation => new { translation.Culture, translation.Key });
+            entity.Property(translation => translation.Culture).HasMaxLength(16);
+            entity.Property(translation => translation.Key).HasMaxLength(256);
+            entity.HasIndex(translation => translation.Culture);
         });
 
         modelBuilder.Entity<TrackedDeployment>(entity =>

@@ -1,0 +1,139 @@
+@model DokployMonitor.Web.Models.TranslationListViewModel
+@{
+    ViewData["Title"] = L["Translations"].Value;
+}
+
+<h1 class="h4 mb-1">@L["Translations"]</h1>
+<p class="small text-secondary mb-3">@L["Interface texts are stored in the database; changes made here apply immediately. The key is the source (English) text — if a translation is left empty the source text is shown. New texts seen on screen are added to this list automatically as untranslated."]</p>
+
+<form method="get" class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small text-secondary mb-1" for="t-culture">@L["Language"]</label>
+                <select class="form-select form-select-sm" id="t-culture" name="culture" onchange="this.form.submit()">
+                    @foreach (var culture in DokployMonitor.Web.Options.LocalizationSetup.Supported)
+                    {
+                        <option value="@culture.Code" selected="@(culture.Code == Model.Culture)">
+                            @culture.Flag @culture.NativeName (@culture.Code)
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-secondary mb-1" for="t-search">@L["Search"]</label>
+                <input class="form-control form-control-sm" id="t-search" name="search" value="@Model.Search" />
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="t-missing" name="onlyMissing"
+                           value="true" checked="@Model.OnlyMissing" />
+                    <label class="form-check-label small" for="t-missing">@L["Untranslated only"]</label>
+                </div>
+            </div>
+            <div class="col-md-2 text-md-end">
+                <button class="btn btn-sm btn-outline-light" type="submit">@L["Filter"]</button>
+            </div>
+        </div>
+        <div class="small text-secondary mt-2">
+            @L["{0} keys", Model.TotalCount] · <span class="@(Model.MissingCount > 0 ? "text-warning" : "text-success")">
+                @L["{0} untranslated", Model.MissingCount]
+            </span>
+            @if (Model.LoadedAt is { } loadedAt)
+            {
+                <span>· @L["loaded at"] @loadedAt.ToLocalTime().ToString("HH:mm:ss")</span>
+            }
+        </div>
+    </div>
+</form>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <form method="post" asp-action="Save">
+            <input type="hidden" name="culture" value="@Model.Culture" />
+            <input type="hidden" name="onlyMissing" value="@Model.OnlyMissing.ToString().ToLowerInvariant()" />
+            <input type="hidden" name="search" value="@Model.Search" />
+
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>@Model.Culture.ToUpperInvariant() — @Model.Rows.Count @L["records"]</span>
+                    <button class="btn btn-sm btn-brand" type="submit">@L["Save"]</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width:40%">@L["Key (source text)"]</th>
+                                <th>@L["Translation"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Rows.Count == 0)
+                            {
+                                <tr><td colspan="2" class="text-center text-secondary py-4">
+                                    @L["No records. You can add a key using the form on the right."]
+                                </td></tr>
+                            }
+                            @foreach (var row in Model.Rows)
+                            {
+                                <tr class="@(row.IsTranslated ? "" : "row-failed")">
+                                    <td class="small">
+                                        <code>@row.Key</code>
+                                        @if (row.UpdatedBy is not null)
+                                        {
+                                            <div class="text-secondary">@row.UpdatedBy · @row.UpdatedAt.ToLocalTime().ToString("dd.MM HH:mm")</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <input class="form-control form-control-sm"
+                                               name="values[@row.Key]" value="@row.Value" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Rows.Count > 0)
+                {
+                    <div class="card-footer text-end">
+                        <button class="btn btn-sm btn-brand" type="submit">@L["Save"]</button>
+                    </div>
+                }
+            </div>
+        </form>
+
+        @await Html.PartialAsync("_Pager", Model.Page)
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">@L["New Key"]</div>
+            <div class="card-body">
+                <form method="post" asp-action="Add">
+                    <input type="hidden" name="Culture" value="@Model.Culture" />
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" for="a-key">L["Key (source text)"]</label>
+                        <input class="form-control form-control-sm" id="a-key" name="Key" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" for="a-value">@L["Translation"]</label>
+                        <input class="form-control form-control-sm" id="a-value" name="Value" />
+                    </div>
+
+                    <button class="btn btn-brand btn-sm w-100" type="submit">@L["Add"]</button>
+                </form>
+            </div>
+        </div>
+
+        <form method="post" asp-action="Refresh">
+            <input type="hidden" name="culture" value="@Model.Culture" />
+            <button class="btn btn-outline-secondary btn-sm w-100" type="submit">
+                @L["Refresh (scan for new keys)"]
+            </button>
+        </form>
+
+        <div class="small text-secondary mt-2">@L["In a multi-instance setup other instances are expected to pick up changes within 30 seconds (background refresh)."]</div>
+    </div>
+</div>

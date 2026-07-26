@@ -3,17 +3,13 @@
 @using Microsoft.Extensions.Options
 @inject IOptions<DokployMonitor.Web.Options.AuthOptions> AuthOptions
 @{
-    ViewData["Title"] = "Kullanicilar";
+    ViewData["Title"] = L["Users"].Value;
     var input = Model.NewUser;
     var minimumLength = Math.Clamp(AuthOptions.Value.MinimumPasswordLength, 8, 64);
 }
 
-<h1 class="h4 mb-1">Kullanicilar</h1>
-<p class="small text-secondary mb-3">
-    Kendi kendine kayit ekrani yoktur; hesaplar yalnizca <code>@MonitorRoles.SuperAdmin</code>
-    rolundeki kullanicilar tarafindan olusturulur. <code>@MonitorRoles.Viewer</code> rolu salt
-    okumadir: panolari ve loglari gorur, deployment durdurma / yeniden deploy yapamaz.
-</p>
+<h1 class="h4 mb-1">@L["Users"]</h1>
+<p class="small text-secondary mb-3">@L["There is no self-service sign-up; accounts are created only by users with the SuperAdmin role. The Viewer role is read-only: it can see dashboards and logs but cannot stop or redeploy deployments."]</p>
 
 @if (!ViewData.ModelState.IsValid)
 {
@@ -25,14 +21,14 @@
 <div class="row g-3">
     <div class="col-lg-7">
         <div class="card">
-            <div class="card-header">Mevcut Kullanicilar (@Model.Users.Count)</div>
+            <div class="card-header">@L["Existing Users"] (@Model.Users.Count)</div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
-                            <th>E-posta</th>
-                            <th style="width:8rem">Rol</th>
-                            <th style="width:7rem">Durum</th>
+                            <th>@L["Email"]</th>
+                            <th style="width:8rem">@L["Role"]</th>
+                            <th style="width:7rem">@L["Status"]</th>
                             <th style="width:6rem"></th>
                         </tr>
                     </thead>
@@ -56,19 +52,19 @@
                                 <td class="small">
                                     @if (user.LockedOut)
                                     {
-                                        <span class="text-danger">kilitli</span>
+                                        <span class="text-danger">@L["locked"]</span>
                                     }
                                     else if (user.MustChangeCredentials)
                                     {
-                                        <span class="text-warning">kimlik degisecek</span>
+                                        <span class="text-warning">@L["credentials pending"]</span>
                                     }
                                     else
                                     {
-                                        <span class="text-success">aktif</span>
+                                        <span class="text-success">@L["active"]</span>
                                     }
                                     @if (user.IsCurrentUser)
                                     {
-                                        <span class="badge text-bg-secondary">siz</span>
+                                        <span class="badge text-bg-secondary">@L["you"]</span>
                                     }
                                 </td>
                                 <td class="text-end">
@@ -91,30 +87,30 @@
 
     <div class="col-lg-5">
         <div class="card">
-            <div class="card-header">Yeni Kullanici</div>
+            <div class="card-header">@L["New User"]</div>
             <div class="card-body">
                 <form method="post" asp-action="Create">
 
                     <div class="mb-3">
-                        <label class="form-label small text-secondary" asp-for="NewUser.Email">E-posta</label>
+                        <label class="form-label small text-secondary" asp-for="NewUser.Email">@L["Email"]</label>
                         <input class="form-control form-control-sm" asp-for="NewUser.Email" type="email" name="Email"
                                value="@input.Email" />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small text-secondary" asp-for="NewUser.DisplayName">Ad (istege bagli)</label>
+                        <label class="form-label small text-secondary" asp-for="NewUser.DisplayName">@L["Name (optional)"]</label>
                         <input class="form-control form-control-sm" asp-for="NewUser.DisplayName" name="DisplayName"
                                value="@input.DisplayName" />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small text-secondary" asp-for="NewUser.Password">Baslangic parolasi</label>
+                        <label class="form-label small text-secondary" asp-for="NewUser.Password">@L["Initial password"]</label>
                         <input class="form-control form-control-sm" asp-for="NewUser.Password" type="password" name="Password" />
-                        <div class="form-text small">En az @minimumLength karakter; buyuk harf, kucuk harf ve rakam.</div>
+                        <div class="form-text small">@L["At least {0} characters; must contain upper case, lower case and a digit.", minimumLength]</div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small text-secondary" asp-for="NewUser.Role">Rol</label>
+                        <label class="form-label small text-secondary" asp-for="NewUser.Role">@L["Role"]</label>
                         <select class="form-select form-select-sm" asp-for="NewUser.Role" name="Role">
                             @foreach (var role in MonitorRoles.All)
                             {
@@ -127,11 +123,11 @@
                         <input class="form-check-input" asp-for="NewUser.MustChangeCredentials" type="checkbox"
                                name="MustChangeCredentials" value="true" checked="@input.MustChangeCredentials" />
                         <label class="form-check-label small" asp-for="NewUser.MustChangeCredentials">
-                            Ilk giriste kimlik bilgilerini degistirsin
+                            @L["Require credential change on first sign-in"]
                         </label>
                     </div>
 
-                    <button class="btn btn-brand btn-sm w-100" type="submit">Olustur</button>
+                    <button class="btn btn-brand btn-sm w-100" type="submit">@L["Create"]</button>
                 </form>
             </div>
         </div>

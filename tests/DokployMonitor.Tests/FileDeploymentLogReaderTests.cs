@@ -1,3 +1,4 @@
+using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Infrastructure.Logs;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -19,6 +20,7 @@ public sealed class FileDeploymentLogReaderTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_mountPath, "api"));
 
         _reader = new FileDeploymentLogReader(
+            new SourceLanguageLocalizer(),
             Options.Create(new LogOptions
             {
                 MountPath = _mountPath,

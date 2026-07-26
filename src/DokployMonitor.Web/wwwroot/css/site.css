@@ -14,6 +14,10 @@ body {
     font-size: 0.925rem;
 }
 
+body.has-bottom-nav {
+    --bottom-nav-height: 4.25rem;
+}
+
 /* ------------------------------------------------------------ Marka / logo */
 .navbar-brand .brand-logo {
     height: 26px;
@@ -257,20 +261,83 @@ body {
 }
 
 @media (max-width: 991.98px) {
-    /* Katlanan menude linkler alt alta ve dokunulabilir yukseklikte. */
-    .navbar-collapse .navbar-nav {
-        flex-direction: column;
-        gap: .15rem;
-        padding-block: .5rem;
-    }
-
-    .navbar-collapse .nav-link {
-        padding-block: .5rem;
-    }
-
     /* Filtre formlari tek kolona duser; alanlar tam genislik. */
     .card-body .row > [class*="col-"] {
         margin-bottom: .25rem;
+    }
+
+    body.has-bottom-nav main.container-fluid {
+        padding-bottom: calc(var(--bottom-nav-height) + 1.25rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* Uygulama tarzi alt gezinme cubugu. */
+    .bottom-nav {
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        z-index: 1030;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .15rem;
+        min-height: var(--bottom-nav-height);
+        padding: .35rem .35rem calc(.35rem + env(safe-area-inset-bottom, 0px));
+        background: var(--bs-body-bg);
+        border-top: 1px solid var(--bs-border-color);
+        box-shadow: 0 -6px 18px rgba(0, 0, 0, .06);
+    }
+
+    .bottom-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: .2rem;
+        min-width: 0;
+        padding: .35rem .2rem;
+        border: 0;
+        border-radius: .55rem;
+        background: transparent;
+        color: var(--bs-secondary-color);
+        text-decoration: none;
+        font-size: .65rem;
+        font-weight: 600;
+        line-height: 1.1;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-nav-item span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .bottom-nav-icon {
+        width: 1.35rem;
+        height: 1.35rem;
+        flex: 0 0 auto;
+    }
+
+    .bottom-nav-item.active {
+        color: var(--tm-green);
+        background: color-mix(in srgb, var(--tm-green) 12%, transparent);
+    }
+
+    .bottom-nav-item:focus-visible {
+        outline: 2px solid var(--tm-green);
+        outline-offset: 2px;
+    }
+
+    .mobile-more-sheet {
+        max-height: min(70vh, 28rem);
+        border-top-left-radius: 1rem;
+        border-top-right-radius: 1rem;
+    }
+
+    .mobile-more-sheet .list-group-item.active {
+        background: color-mix(in srgb, var(--tm-green) 16%, transparent);
+        color: inherit;
+        border-color: var(--bs-border-color);
     }
 }
 

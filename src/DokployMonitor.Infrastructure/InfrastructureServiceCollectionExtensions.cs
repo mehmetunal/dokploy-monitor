@@ -46,26 +46,25 @@ public static class InfrastructureServiceCollectionExtensions
         var dokployOptions = configuration.GetSection(DokployOptions.SectionName).Get<DokployOptions>() ?? new DokployOptions();
         var attemptTimeout = TimeSpan.FromSeconds(Math.Clamp(dokployOptions.TimeoutSeconds, 5, 120));
 
-        services.AddHttpClient<IDokployClient, DokployApiClient>((sp, client) =>
+        // Adres ve API anahtari baglanti basina degistigi icin adlandirilmis istemciler
+        // yalnizca handler/direnc politikasini tasir; geri kalanini fabrika doldurur.
+        // Sertifika dogrulamasi handler seviyesinde oldugundan iki varyant var.
+        foreach (var (name, allowInvalidCertificates) in new[]
+                 {
+                     (DokployClientFactory.ClientName, false),
+                     (DokployClientFactory.InsecureClientName, true),
+                 })
+        {
+            services.AddHttpClient(name)
+            .ConfigurePrimaryHttpMessageHandler(() =>
             {
-                var options = sp.GetRequiredService<IOptions<DokployOptions>>().Value;
-                client.BaseAddress = options.ApiBaseUri();
-                client.DefaultRequestHeaders.Add("x-api-key", options.ApiKey);
-                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-                // Zaman asimini direnc katmani yonetiyor; HttpClient'in kendi timeout'u devre disi.
-                client.Timeout = Timeout.InfiniteTimeSpan;
-            })
-            .ConfigurePrimaryHttpMessageHandler(sp =>
-            {
-                var options = sp.GetRequiredService<IOptions<DokployOptions>>().Value;
                 var handler = new SocketsHttpHandler
                 {
                     PooledConnectionLifetime = TimeSpan.FromMinutes(5),
                     AutomaticDecompression = DecompressionMethods.All,
                 };
 
-                if (options.AllowInvalidCertificates)
+                if (allowInvalidCertificates)
                 {
                     handler.SslOptions.RemoteCertificateValidationCallback =
                         (_, _, _, _) => true;
@@ -100,6 +99,9 @@ public static class InfrastructureServiceCollectionExtensions
                         args.Outcome.Exception is HttpRequestException or TimeoutRejectedException);
                 };
             });
+        }
+
+        services.AddSingleton<IDokployClientFactory, DokployClientFactory>();
 
         var connectionString = configuration.GetConnectionString("Default")
             ?? "Data Source=data/monitor.db";

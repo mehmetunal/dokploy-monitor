@@ -16,7 +16,8 @@ public sealed record SyncResult(int Changed, int Active, bool Failed, string? Er
 /// icin olay kaydi uretir ve pano abonelerine canli guncelleme gonderir.
 /// </summary>
 public sealed class DeploymentSyncService(
-    IDokployClient dokploy,
+    IDokployClientFactory clientFactory,
+    ConnectionService connectionService,
     MonitorDbContext db,
     IDeploymentLogReader logReader,
     DashboardQueryService dashboard,
@@ -34,18 +35,50 @@ public sealed class DeploymentSyncService(
 
     public async Task<SyncResult> SyncAsync(CancellationToken ct = default)
     {
-        IReadOnlyList<TrackedDeployment> incoming;
-        try
+        var connections = await connectionService.GetEnabledAsync(ct);
+        if (connections.Count == 0)
         {
-            incoming = await dokploy.GetAllDeploymentsAsync(ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex, "Dokploy'dan deployment listesi alinamadi.");
-            state.LastSyncError = ex.Message;
+            const string reason = "Tanimli ve etkin Dokploy baglantisi yok.";
+            state.LastSyncError = reason;
             await BroadcastAsync(ct);
-            return new SyncResult(0, 0, true, ex.Message);
+            return new SyncResult(0, 0, true, reason);
         }
+
+        // Her baglanti bagimsiz toplanir: biri hata verse digerleri panoyu beslemeye devam eder.
+        var incoming = new List<TrackedDeployment>();
+        var failures = new List<string>();
+
+        foreach (var connection in connections)
+        {
+            try
+            {
+                var client = clientFactory.Create(connection);
+                var fetched = await client.GetAllDeploymentsAsync(ct);
+
+                foreach (var deployment in fetched)
+                {
+                    deployment.ConnectionId = connection.Id;
+                }
+
+                incoming.AddRange(fetched);
+                await connectionService.RecordSyncResultAsync(connection.Id, null, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "'{Connection}' baglantisindan deployment listesi alinamadi.", connection.Name);
+                failures.Add($"{connection.Name}: {ex.Message}");
+                await connectionService.RecordSyncResultAsync(connection.Id, ex.Message, ct);
+            }
+        }
+
+        if (failures.Count == connections.Count)
+        {
+            var error = string.Join(" | ", failures);
+            state.LastSyncError = error;
+            await BroadcastAsync(ct);
+            return new SyncResult(0, 0, true, error);
+        }
+
 
         var now = DateTimeOffset.UtcNow;
         var isFirstRun = !await db.Deployments.AnyAsync(ct);
@@ -71,7 +104,11 @@ public sealed class DeploymentSyncService(
         }
 
         state.LastSyncAt = now;
-        state.LastSyncError = null;
+
+        // Kismi hata korunur: bir baglanti bozukken pano "her sey yolunda" gostermemeli.
+        state.LastSyncError = failures.Count > 0
+            ? $"{failures.Count}/{connections.Count} baglanti okunamadi — {string.Join(" | ", failures)}"
+            : null;
 
         var activeCount = incoming.Count(d => d.Status.IsActive());
         state.HasActiveDeployments = activeCount > 0;
@@ -171,6 +208,9 @@ public sealed class DeploymentSyncService(
         }
 
         var previousStatus = stored.Status;
+
+        // Baglanti etiketi eksikse (coklu baglanti oncesi kayit) ilk guncellemede dolar.
+        stored.ConnectionId = candidate.ConnectionId ?? stored.ConnectionId;
 
         stored.Status = candidate.Status;
         stored.StartedAt = candidate.StartedAt;

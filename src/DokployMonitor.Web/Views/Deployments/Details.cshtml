@@ -1,8 +1,14 @@
 @model DokployMonitor.Web.Models.DeploymentDetailsViewModel
 @using DokployMonitor.Core.Deployments
+@using DokployMonitor.Infrastructure.Identity
 @{
     var d = Model.Deployment;
     ViewData["Title"] = $"{d.DisplayName} · Deployment";
+
+    // Rozet yalnizca canli log akisi varken anlamli; aksi halde navbar'da gosterilmez.
+    ViewData["ShowConnectionStatus"] = Model.CanStreamLive;
+
+    var canAct = User.IsInRole(MonitorRoles.SuperAdmin);
 
     string StatusCss(DeploymentStatus status) => status switch
     {
@@ -29,21 +35,36 @@
         </div>
     </div>
     <div class="d-flex gap-2">
-        @if (d.Status.IsActive())
+        @if (canAct)
         {
-            <form asp-action="Kill" asp-route-id="@d.DeploymentId" method="post"
-                  onsubmit="return confirm('Bu deployment durdurulacak. Emin misiniz?');">
-                @Html.AntiForgeryToken()
-                <button class="btn btn-sm btn-outline-danger" type="submit">Durdur</button>
-            </form>
+            @if (d.Status.IsActive())
+            {
+                <form asp-action="Kill" asp-route-id="@d.DeploymentId" method="post"
+                      onsubmit="return confirm('Bu deployment durdurulacak. Emin misiniz?');">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Durdur</button>
+                </form>
+            }
+            @if (d.ApplicationId is not null || d.ComposeId is not null)
+            {
+                <form asp-action="Redeploy" asp-route-id="@d.DeploymentId" method="post"
+                      onsubmit="return confirm('Servis yeniden deploy edilecek. Emin misiniz?');">
+                    <button class="btn btn-sm btn-outline-light" type="submit">Yeniden Deploy</button>
+                </form>
+
+                @* Replay: bu eski kayittan ayni servisin deploy'unu tekrarlar.
+                   Dokploy belirli bir commit'i deploy edemedigi icin kaynagin guncel hali derlenir. *@
+                <form asp-action="Replay" asp-route-id="@d.DeploymentId" method="post"
+                      onsubmit="return confirm('Bu deployment tekrarlanacak (replay).\n\nDikkat: Dokploy eski commit\'i degil, kaynagin GUNCEL halini derler.\n\nDevam edilsin mi?');">
+                    <button class="btn btn-sm btn-outline-warning" type="submit"
+                            title="Bu kayittan ayni servisin deploy'unu tekrar tetikle">Replay</button>
+                </form>
+            }
         }
-        @if (d.ApplicationId is not null || d.ComposeId is not null)
+        else
         {
-            <form asp-action="Redeploy" asp-route-id="@d.DeploymentId" method="post"
-                  onsubmit="return confirm('Servis yeniden deploy edilecek. Emin misiniz?');">
-                @Html.AntiForgeryToken()
-                <button class="btn btn-sm btn-outline-light" type="submit">Yeniden Deploy</button>
-            </form>
+            <span class="small text-secondary align-self-center">
+                Deployment mudahalesi icin @MonitorRoles.SuperAdmin rolu gerekir.
+            </span>
         }
     </div>
 </div>

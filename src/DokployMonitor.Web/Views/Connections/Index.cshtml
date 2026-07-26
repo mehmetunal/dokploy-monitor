@@ -1,0 +1,168 @@
+@model DokployMonitor.Web.Models.ConnectionListViewModel
+@{
+    ViewData["Title"] = "Baglantilar";
+    var input = Model.NewConnection;
+    var editing = !string.IsNullOrWhiteSpace(input.Id);
+}
+
+<h1 class="h4 mb-1">Dokploy Baglantilari</h1>
+<p class="small text-secondary mb-3">
+    Her baglanti bir Dokploy sunucusu ve bir API anahtaridir. Senkronizasyon tum
+    <strong>etkin</strong> baglantilari dolasir; toplanan her deployment kaydi hangi
+    baglantidan geldigini tasir. Anahtarlar veritabaninda tutulur ve ekranda maskelenir.
+</p>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger py-2 small" role="alert">
+        <div asp-validation-summary="All" class="mb-0"></div>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">Tanimli Baglantilar (@Model.Connections.Count)</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Ad / Adres</th>
+                            <th style="width:7rem">Kayit</th>
+                            <th style="width:7rem">Durum</th>
+                            <th style="width:11rem"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Connections.Count == 0)
+                        {
+                            <tr><td colspan="4" class="text-center text-secondary py-4">
+                                Henuz baglanti yok. Sagdaki formdan ekleyin.
+                            </td></tr>
+                        }
+                        @foreach (var connection in Model.Connections)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@connection.Name</div>
+                                    <div class="small text-secondary">@connection.BaseUrl</div>
+                                    <div class="small text-secondary"><code>@connection.MaskedApiKey</code></div>
+                                </td>
+                                <td class="small text-secondary">
+                                    @Model.DeploymentCounts.GetValueOrDefault(connection.Id) kayit
+                                </td>
+                                <td class="small">
+                                    @if (!connection.Enabled)
+                                    {
+                                        <span class="text-secondary">devre disi</span>
+                                    }
+                                    else if (connection.LastSyncError is not null)
+                                    {
+                                        <span class="text-danger" title="@connection.LastSyncError">hata</span>
+                                    }
+                                    else if (connection.LastSyncAt is not null)
+                                    {
+                                        <span class="text-success">calisiyor</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-warning">beklemede</span>
+                                    }
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    <form method="post" asp-action="Test" asp-route-id="@connection.Id" class="d-inline m-0">
+                                        <button class="btn btn-sm btn-outline-info" type="submit">Test</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-light"
+                                       asp-action="Index" asp-route-edit="@connection.Id">Duzenle</a>
+                                    <form method="post" asp-action="Delete" asp-route-id="@connection.Id" class="d-inline m-0"
+                                          onsubmit="return confirm('Baglanti silinecek. Toplanan gecmis korunur. Emin misiniz?');">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Sil</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">@(editing ? "Baglantiyi Duzenle" : "Yeni Baglanti")</div>
+            <div class="card-body">
+                <form method="post" asp-action="Save">
+                    <input type="hidden" name="Id" value="@input.Id" />
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" for="c-name">Ad</label>
+                        <input class="form-control form-control-sm" id="c-name" name="Name" value="@input.Name"
+                               placeholder="Uretim" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" for="c-url">Adres (panelin koku)</label>
+                        <input class="form-control form-control-sm" id="c-url" name="BaseUrl" value="@input.BaseUrl"
+                               placeholder="http://dokploy:3000" />
+                        <div class="form-text small">Sonuna <code>/api</code> eklemeyin.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" for="c-key">API anahtari</label>
+                        <input class="form-control form-control-sm" id="c-key" name="ApiKey" type="password"
+                               autocomplete="off" />
+                        @if (editing)
+                        {
+                            <div class="form-text small">Bos birakirsaniz mevcut anahtar korunur.</div>
+                        }
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small text-secondary" for="c-timeout">Zaman asimi (sn)</label>
+                            <input class="form-control form-control-sm" id="c-timeout" name="TimeoutSeconds"
+                                   type="number" min="5" max="120" value="@input.TimeoutSeconds" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-secondary" for="c-parallel">Es zamanli istek</label>
+                            <input class="form-control form-control-sm" id="c-parallel" name="MaxParallelRequests"
+                                   type="number" min="1" max="16" value="@input.MaxParallelRequests" />
+                        </div>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="c-enabled" name="Enabled" value="true"
+                               checked="@input.Enabled" />
+                        <label class="form-check-label small" for="c-enabled">Etkin (senkronizasyona dahil)</label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="c-cert" name="AllowInvalidCertificates"
+                               value="true" checked="@input.AllowInvalidCertificates" />
+                        <label class="form-check-label small" for="c-cert">Self-signed sertifikaya izin ver</label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="c-legacy" name="ForceLegacyDiscovery"
+                               value="true" checked="@input.ForceLegacyDiscovery" />
+                        <label class="form-check-label small" for="c-legacy">Legacy toplama modunu zorla</label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-brand btn-sm" type="submit">@(editing ? "Kaydet" : "Ekle")</button>
+                        @if (editing)
+                        {
+                            <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Vazgec</a>
+                        }
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="small text-secondary mt-2">
+            Baglanti sayisi arttikca Dokploy'a giden istek de artar: her baglanti icin ayri
+            polling yapilir. Kota/limit hesabini buna gore yapin.
+        </div>
+    </div>
+</div>

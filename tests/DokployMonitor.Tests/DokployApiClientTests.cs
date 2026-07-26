@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using DokployMonitor.Core.Deployments;
+using DokployMonitor.Core.Dokploy;
 using DokployMonitor.Infrastructure.Dokploy;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -230,11 +231,19 @@ public class DokployApiClientTests
 
     private static DokployApiClient CreateClient(StubHandler handler)
     {
-        var options = new DokployOptions { BaseUrl = "https://dokploy.test", ApiKey = "secret-key" };
-        var httpClient = new HttpClient(handler) { BaseAddress = options.ApiBaseUri() };
-        httpClient.DefaultRequestHeaders.Add("x-api-key", options.ApiKey);
+        // Istemci artik tek bir baglantiya baglidir (bkz. DokployClientFactory).
+        var connection = new DokployConnection
+        {
+            Id = "test",
+            Name = "Test",
+            BaseUrl = "https://dokploy.test",
+            ApiKey = "secret-key",
+        };
 
-        return new DokployApiClient(httpClient, Microsoft.Extensions.Options.Options.Create(options), NullLogger<DokployApiClient>.Instance);
+        var httpClient = new HttpClient(handler) { BaseAddress = connection.ApiBaseUri() };
+        httpClient.DefaultRequestHeaders.Add("x-api-key", connection.ApiKey);
+
+        return new DokployApiClient(httpClient, connection, NullLogger<DokployApiClient>.Instance);
     }
 
     private sealed class StubHandler(IReadOnlyList<(string Path, HttpStatusCode Status, string Body)> routes)

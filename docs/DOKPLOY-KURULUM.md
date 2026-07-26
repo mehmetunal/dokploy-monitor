@@ -97,6 +97,10 @@ Dokploy__BaseUrl=http://dokploy:3000
 Dokploy__ApiKey=BURAYA_ADIM_1_ANAHTARI
 Webhook__Token=BURAYA_ADIM_2_TOKENI
 
+# Panel girisi (bos birakilirsa Super123! kullanilir ve ilk giriste degisim zorunlu olur)
+Auth__AdminEmail=admin@sirketiniz.com
+Auth__AdminPassword=
+
 ConnectionStrings__Default=Data Source=/app/data/monitor.db
 Logs__MountPath=/app/dokploy-logs
 Logs__HostPath=/etc/dokploy/logs
@@ -123,7 +127,12 @@ Istege bagli:
 | # | Host yolu | Konteyner yolu | Mod | Nicin |
 |---|---|---|---|---|
 | 1 | `/etc/dokploy/logs` | `/app/dokploy-logs` | **read-only** | Build loglarini okumak icin |
-| 2 | `/var/lib/dokploy-monitor/data` | `/app/data` | read-write | SQLite + log arsivi |
+| 2 | `/var/lib/dokploy-monitor/data` | `/app/data` | read-write | SQLite (izleme + kullanicilar + baglantilar) + log arsivi |
+| 3 | `/var/run/docker.sock` | `/var/run/docker.sock` | **read-only** | Container loglari (`docker logs`) icin |
+
+> 3 numarali mount olmazsa uygulama calisir; log goruntuleyicide "Container" sekmesi
+> "Docker soketi bulunamadi" der ve build loguna duser. Docker soketi guclu bir yetkidir:
+> yalnizca salt-okunur verin ve panele erisimi kisitli tutun.
 
 > 1 numarali mount salt-okunur olmali. Monitor'un Dokploy'un loglarini degistirmesi
 > gerekmiyor; boylece yanlislikla silme/bozma riski de kalmiyor.
@@ -212,6 +221,10 @@ Ayni sayfada log mount'unun durumu ve kopyalanabilir webhook URL'i de gosterilir
 |---|---|
 | Acilista `unable to open database file` | Adim 3'teki `chown 1654:1654` yapilmamis |
 | Acilista `OptionsValidationException` / `DokployOptions.BaseUrl: ...` | Yapilandirma FluentValidation ile acilista dogrulanir; log'daki alan adini duzeltin (or. `BaseUrl`'in sonundaki `/api`'yi silin) |
+| Panele girince surekli "Kimlik Bilgilerini Guncelle" ekrani | Hesap varsayilan parolayla olusturulmus; e-posta **ve** parolayi degistirin (yeni e-posta varsayilandan farkli olmali) |
+| "Bu islem icin yetkiniz yok" | Hesap `Viewer` rolunde; Durdur/Yeniden Deploy/Replay ve kullanici-baglanti yonetimi `SuperAdmin` ister |
+| Container logu "Docker soketi bulunamadi" | Adim 6'daki 3. mount eksik |
+| Pano "1/2 baglanti okunamadi" diyor | Baglantilar ekranindan ilgili baglantiyi **Test** edin; adres/anahtar hatali ya da sunucu erisilemez |
 | Tanilama: "Sunucuya erisim ✘" | `http://dokploy:3000` cozulemiyor → panelin public URL'ini kullanin |
 | Tanilama: "API anahtari gecerli ✘" (401/403) | Anahtar yanlis ya da yetkisi yetersiz |
 | Pano bos, hata yok | Henuz hic deployment yok ya da API anahtari baska bir organizasyona ait |

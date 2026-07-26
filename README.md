@@ -1,7 +1,8 @@
-# Dokploy Monitor
+# Trimango Dokploy Monitör
 
 Dokploy'daki **tum projelerin deployment sureclerini tek ekranda** izleyen ASP.NET Core MVC uygulamasi.
-Kendisi de Dokploy'a bir servis olarak deploy edilir.
+Kendisi de Dokploy'a bir servis olarak deploy edilir. **Birden fazla Dokploy sunucusu /
+API anahtari** ayni panelden izlenebilir.
 
 Cevapladigi sorular:
 
@@ -25,6 +26,9 @@ tests/DokployMonitor.Tests          xUnit testleri
 | Veritabani semasi | **FluentMigrator** (acilista `MigrateUp`) | `Infrastructure/Persistence/Migrations` |
 | Sorgu / kayit | EF Core (SQLite) | `Infrastructure/Persistence/MonitorDbContext.cs` |
 | Yapilandirma ve istek dogrulama | **FluentValidation** (`ValidateOnStart` ile fail-fast) | `*Validator.cs`, `Infrastructure/Validation` |
+| Giris ve roller | **ASP.NET Core Identity** (cookie) | `Infrastructure/Identity`, `Controllers/AccountController.cs` |
+| Coklu Dokploy sunucusu | Baglanti basina istemci fabrikasi | `Infrastructure/Dokploy/DokployClientFactory.cs` |
+| Container loglari | Docker Engine API (unix socket) | `Infrastructure/Docker` |
 
 ### Veri nereden geliyor?
 
@@ -49,16 +53,71 @@ tests/DokployMonitor.Tests          xUnit testleri
 
 ---
 
+## Giris, roller ve kullanicilar
+
+Panel **giris zorunlu**dur (ASP.NET Core Identity, cookie oturumu). Kendi kendine kayit
+ekrani yoktur; hesaplari yalnizca `SuperAdmin` rolundeki bir kullanici olusturur.
+
+**Ilk giris:** uygulama ilk acilista yonetici hesabini olusturur.
+
+```
+E-posta : admin@trimango.local
+Parola  : Super123!
+```
+
+Bu hesapla girildiginde panel **hicbir sayfayi acmaz**; once
+`/Account/ChangeCredentials` ekraninda **e-posta ve parola** degistirilmek zorundadir
+(yeni e-posta varsayilandan farkli olmak zorunda). Parolayi kendiniz belirlemek
+isterseniz `Auth__AdminPassword` verin — o zaman zorunlu degisim istenmez.
+
+| Rol | Yetki |
+|---|---|
+| `SuperAdmin` | Her sey: kullanici yonetimi, Dokploy baglantilari, **Durdur / Yeniden Deploy / Replay** |
+| `Viewer` | Salt okuma: panolar, gecmis, hata analizi, loglar. Aksiyon butonlari gorunmez |
+
+Yetkisiz bir istek `/Account/AccessDenied` sayfasina duser. Anonim kalan tek uclar:
+`/health`, `/Account/Login` ve webhook (`/api/webhooks/dokploy`, token ile korunur).
+
+---
+
+## Coklu Dokploy baglantisi
+
+Her baglanti bir sunucu + bir API anahtaridir. **Baglantilar** ekrani (SuperAdmin) uzerinden
+eklenir; senkronizasyon tum **etkin** baglantilari dolasir ve her deployment kaydini
+geldigi baglantiyla etiketler.
+
+- Mevcut kurulumlar bozulmaz: `Dokploy__BaseUrl` / `Dokploy__ApiKey` verilmisse ilk acilista
+  **"Varsayilan"** adiyla veritabanina aktarilir ve eski kayitlar bu baglantiya baglanir.
+- Bir baglanti hata verirse digerleri calismaya devam eder; panoda
+  *"1/2 baglanti okunamadi"* uyarisi, Baglantilar ve Tanilama ekranlarinda ise
+  baglanti basina durum gorunur.
+- Kuyruk her baglanti icin ayri okunur; sira numaralari kendi kuyruguna gore hesaplanir.
+- Gecmis ekraninda **sunucu (baglanti)** filtresi, satirlarda baglanti etiketi cikar
+  (birden fazla baglanti tanimliysa).
+- Baglanti silinirse toplanan deployment gecmisi **korunur**.
+
+> **Istek hacmi baglanti sayisiyla carpilir.** Iki baglanti = iki kat polling. API anahtari
+> kotasi/rate limit ayarlarken bunu hesaba katin (bkz. asagidaki kota bolumu).
+
+> API anahtarlari veritabaninda duz metin tutulur (kullanici parola hash'leriyle ayni
+> dosyada). SQLite dosyasinin bulundugu volume'u korumali tutun; ekranlarda anahtar
+> yalnizca maskeli gosterilir.
+
+---
+
 ## Ekranlar
 
 | Yol | Icerik |
 |---|---|
+| `/Account/Login` | Giris (anonim) |
 | `/` | Canli pano: KPI'lar, aktif deploymentlar (canli sayac), kuyruk, son deploymentlar, webhook bildirimleri |
 | `/Deployments` | Filtrelenebilir gecmis (proje / durum / metin arama) |
-| `/Deployments/Details/{id}` | Canli build logu, hata mesaji, olay zaman cizelgesi, servisin son deploylari, Durdur / Yeniden Deploy |
-| `/Errors` | Hata analizi: normalize edilmis imzalara gore gruplanmis hatalar |
-| `/Dashboard/Diagnostics` | Baglanti ve yetenek testi, webhook URL'i |
-| `/health` | Saglik ucu |
+| `/Deployments/Details/{id}` | Canli build logu, **container logu (docker logs)**, hata mesaji, olay zaman cizelgesi, servisin ve projenin son deploylari, Durdur / Yeniden Deploy / **Replay** |
+| `/Errors` | Hata analizi: proje / son N gun filtresi, gruplanmis hatalar, log onizleme |
+| `/Dashboard/Diagnostics` | Baglanti basina yetenek testi, Docker soketi durumu, webhook URL'i |
+| `/Connections` | Dokploy sunucu/API anahtari yonetimi (**SuperAdmin**) |
+| `/Users` | Kullanici yonetimi (**SuperAdmin**) |
+| `/health` | Saglik ucu (anonim) |
 
 ---
 
@@ -68,10 +127,14 @@ Tum ayarlar ortam degiskeni ile gecilebilir (`__` ic ice bolum ayraci):
 
 | Degisken | Aciklama |
 |---|---|
-| `Dokploy__BaseUrl` | Dokploy koku, `/api` olmadan. Ayni sunucuda: `http://dokploy:3000` |
-| `Dokploy__ApiKey` | Dokploy → Settings → API Keys ([diyalogun tum alanlari](#dokploy-api-anahtari-generate-api-key)) |
-| `Dokploy__ForceLegacyDiscovery` | `true` ise merkezi endpoint hic denenmez |
-| `Dokploy__AllowInvalidCertificates` | Self-signed sertifika icin |
+| `Dokploy__BaseUrl` | **Ilk kurulum baglantisi**: Dokploy koku, `/api` olmadan. Ayni sunucuda: `http://dokploy:3000`. Acilista "Varsayilan" baglanti olarak ice aktarilir; sonrasi panelden yonetilir |
+| `Dokploy__ApiKey` | Ilk baglantinin anahtari ([diyalogun tum alanlari](#dokploy-api-anahtari-generate-api-key)) |
+| `Dokploy__ForceLegacyDiscovery` | `true` ise merkezi endpoint hic denenmez (baglanti bazinda da ayarlanabilir) |
+| `Dokploy__AllowInvalidCertificates` | Self-signed sertifika icin (baglanti bazinda da ayarlanabilir) |
+| `Auth__AdminEmail` | Ilk yonetici e-postasi (varsayilan `admin@trimango.local`) |
+| `Auth__AdminPassword` | Bos ise `Super123!` kullanilir ve ilk giriste degistirme zorunlu olur |
+| `Auth__SessionDays` | Oturum cerezi omru (7) |
+| `Docker__Enabled` / `Docker__SocketPath` | Container logu (docker logs) ayarlari; soket mount edilmeli |
 | `ConnectionStrings__Default` | SQLite yolu (varsayilan `/app/data/monitor.db`) |
 | `Monitor__IdlePollSeconds` / `Monitor__ActivePollSeconds` | Polling araliklari (15 / 2) |
 | `Monitor__RetentionDays` | Kayit saklama suresi (90, `0` = sinirsiz) |

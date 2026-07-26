@@ -17,8 +17,11 @@ public sealed class AuthOptions
 
     public string AdminDisplayName { get; set; } = "Yonetici";
 
-    /// <summary>Identity parola kurali ve uretilen parolanin uzunlugu icin taban.</summary>
-    public int MinimumPasswordLength { get; set; } = 10;
+    /// <summary>
+    /// Identity parola uzunlugu kurali. Varsayilan 8: kurulum parolasi
+    /// <c>Super123!</c> (9 karakter) bu kurala uyar.
+    /// </summary>
+    public int MinimumPasswordLength { get; set; } = 8;
 
     /// <summary>Oturum cerezinin gecerlilik suresi (gun).</summary>
     public int SessionDays { get; set; } = 7;

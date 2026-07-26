@@ -10,6 +10,12 @@ public class TrackedDeployment
     /// <summary>Dokploy'daki `deploymentId` (birincil anahtar olarak da bunu kullaniyoruz).</summary>
     public required string DeploymentId { get; set; }
 
+    /// <summary>
+    /// Kaydin hangi Dokploy baglantisindan (API anahtarindan) geldigi.
+    /// Coklu baglanti oncesi toplanan kayitlarda bos olabilir.
+    /// </summary>
+    public string? ConnectionId { get; set; }
+
     public DeploymentStatus Status { get; set; }
 
     public string? Title { get; set; }

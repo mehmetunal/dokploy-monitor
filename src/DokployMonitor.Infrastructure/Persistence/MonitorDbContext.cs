@@ -1,5 +1,6 @@
 using System.Globalization;
 using DokployMonitor.Core.Deployments;
+using DokployMonitor.Core.Dokploy;
 using DokployMonitor.Core.Notifications;
 using DokployMonitor.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -15,6 +16,7 @@ namespace DokployMonitor.Infrastructure.Persistence;
 public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
     : IdentityDbContext<ApplicationUser>(options)
 {
+    public DbSet<DokployConnection> Connections => Set<DokployConnection>();
     public DbSet<TrackedDeployment> Deployments => Set<TrackedDeployment>();
     public DbSet<DeploymentEvent> DeploymentEvents => Set<DeploymentEvent>();
     public DbSet<ErrorSignature> ErrorSignatures => Set<ErrorSignature>();
@@ -33,10 +35,21 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
         // Identity tablolarinin (AspNetUsers, AspNetRoles, ...) eslemesi.
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<DokployConnection>(entity =>
+        {
+            entity.ToTable("DokployConnections");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Id).HasMaxLength(64);
+            entity.Property(c => c.Name).HasMaxLength(128);
+            entity.HasIndex(c => c.Name).IsUnique();
+        });
+
         modelBuilder.Entity<TrackedDeployment>(entity =>
         {
             entity.HasKey(d => d.DeploymentId);
             entity.Property(d => d.DeploymentId).HasMaxLength(64);
+            entity.Property(d => d.ConnectionId).HasMaxLength(64);
+            entity.HasIndex(d => d.ConnectionId);
             entity.Property(d => d.ServiceType).HasMaxLength(32);
             entity.Property(d => d.Status).HasConversion<string>().HasMaxLength(16);
             entity.Property(d => d.ErrorSignatureHash).HasMaxLength(32);

@@ -43,7 +43,8 @@ public sealed class MigrationSchemaTests : IDisposable
             [
                 "AspNetRoleClaims", "AspNetRoles", "AspNetUserClaims", "AspNetUserLogins",
                 "AspNetUserRoles", "AspNetUserTokens", "AspNetUsers",
-                "DeploymentEvents", "Deployments", "ErrorSignatures", "WebhookNotifications",
+                "DeploymentEvents", "Deployments", "DokployConnections",
+                "ErrorSignatures", "WebhookNotifications",
             ],
             TableNames(connectionString));
     }

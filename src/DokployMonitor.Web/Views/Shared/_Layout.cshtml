@@ -1,9 +1,17 @@
+@using DokployMonitor.Infrastructure.Identity
 @{
     var action = ViewContext.RouteData.Values["action"]?.ToString();
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
 
     string NavClass(string target) =>
         string.Equals(controller, target, StringComparison.OrdinalIgnoreCase) ? "nav-link active" : "nav-link";
+
+    var isSuperAdmin = User.IsInRole(MonitorRoles.SuperAdmin);
+
+    // Baglanti rozeti yalnizca canli baglanti kuran sayfalarda anlamli.
+    var showConnectionStatus = ViewData["ShowConnectionStatus"] is true;
+
+    var userLabel = User.FindFirst(MonitorClaims.DisplayName)?.Value ?? User.Identity?.Name;
 }
 <!DOCTYPE html>
 <html lang="tr" data-bs-theme="dark">
@@ -28,14 +36,28 @@
                 <a class="@NavClass("Deployments")" asp-controller="Deployments" asp-action="Index">Gecmis</a>
                 <a class="@NavClass("Errors")" asp-controller="Errors" asp-action="Index">Hata Analizi</a>
                 <a class="nav-link @(action == "Diagnostics" ? "active" : "")" asp-controller="Dashboard" asp-action="Diagnostics">Tanilama</a>
+                @if (isSuperAdmin)
+                {
+                    <a class="@NavClass("Connections")" asp-controller="Connections" asp-action="Index">Baglantilar</a>
+                    <a class="@NavClass("Users")" asp-controller="Users" asp-action="Index">Kullanicilar</a>
+                }
             </div>
             <div class="d-flex align-items-center gap-3 small">
-                <span id="connection-status" class="badge text-bg-secondary">baglaniyor…</span>
+                @if (showConnectionStatus)
+                {
+                    <span id="connection-status" class="badge text-bg-secondary">baglaniyor…</span>
+                }
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <span class="text-secondary">@User.Identity.Name</span>
+                    <a class="text-secondary text-decoration-none" asp-controller="Account" asp-action="ChangeCredentials"
+                       title="Kimlik bilgilerini degistir">
+                        @userLabel
+                        @if (isSuperAdmin)
+                        {
+                            <span class="badge text-bg-warning ms-1">@MonitorRoles.SuperAdmin</span>
+                        }
+                    </a>
                     <form method="post" asp-controller="Account" asp-action="Logout" class="m-0">
-                        @Html.AntiForgeryToken()
                         <button class="btn btn-sm btn-outline-secondary" type="submit">Cikis</button>
                     </form>
                 }

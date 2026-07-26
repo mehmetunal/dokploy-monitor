@@ -27,24 +27,55 @@ public sealed class QueueSyncWorker(
         using var timer = new PeriodicTimer(interval);
         var previousFingerprint = string.Empty;
 
+        // Kuyruk endpoint'i olmayan baglantilar bir kez tespit edilir, sonra atlanir.
+        var unsupported = new HashSet<string>(StringComparer.Ordinal);
+
         while (await SafeWaitAsync(timer, stoppingToken))
         {
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
-                var dokploy = scope.ServiceProvider.GetRequiredService<IDokployClient>();
+                var clientFactory = scope.ServiceProvider.GetRequiredService<IDokployClientFactory>();
+                var connections = await scope.ServiceProvider
+                    .GetRequiredService<ConnectionService>()
+                    .GetEnabledAsync(stoppingToken);
 
-                var snapshot = await dokploy.GetQueueAsync(stoppingToken);
-                state.Queue = snapshot;
-
-                if (!snapshot.IsAvailable)
+                var pending = connections.Where(c => !unsupported.Contains(c.Id)).ToList();
+                if (pending.Count == 0)
                 {
-                    // Endpoint yoksa istemci bunu hatirliyor; bosuna sorgulamaya devam etmeyelim.
-                    logger.LogInformation("Kuyruk izleme devre disi: {Reason}", snapshot.UnavailableReason);
-                    return;
+                    if (connections.Count > 0)
+                    {
+                        logger.LogInformation("Hicbir baglanti kuyruk endpoint'ini desteklemiyor; izleme durduruldu.");
+                        return;
+                    }
+
+                    continue;
                 }
 
-                var fingerprint = string.Join('|', snapshot.Jobs.Select(j => $"{j.Id}:{j.State}"));
+                var totalJobs = 0;
+                var fingerprints = new List<string>(pending.Count);
+
+                foreach (var connection in pending)
+                {
+                    var snapshot = await clientFactory.Create(connection).GetQueueAsync(stoppingToken);
+                    state.SetQueue(connection.Id, snapshot);
+
+                    if (!snapshot.IsAvailable)
+                    {
+                        logger.LogInformation(
+                            "'{Connection}' icin kuyruk izleme devre disi: {Reason}",
+                            connection.Name,
+                            snapshot.UnavailableReason);
+
+                        unsupported.Add(connection.Id);
+                        continue;
+                    }
+
+                    totalJobs += snapshot.Jobs.Count;
+                    fingerprints.Add($"{connection.Id}:{string.Join('|', snapshot.Jobs.Select(j => $"{j.Id}:{j.State}"))}");
+                }
+
+                var fingerprint = string.Join(';', fingerprints);
                 if (fingerprint == previousFingerprint)
                 {
                     continue;
@@ -56,7 +87,7 @@ public sealed class QueueSyncWorker(
                 await sync.BroadcastAsync(stoppingToken);
 
                 // Kuyruk hareketlendiyse deployment tablosu da birazdan degisecek.
-                if (snapshot.Jobs.Count > 0)
+                if (totalJobs > 0)
                 {
                     state.RequestSync(SyncTrigger.Webhook);
                 }

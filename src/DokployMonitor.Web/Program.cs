@@ -2,6 +2,7 @@ using DokployMonitor.Infrastructure;
 using DokployMonitor.Infrastructure.Identity;
 using DokployMonitor.Infrastructure.Persistence;
 using DokployMonitor.Infrastructure.Validation;
+using DokployMonitor.Web.Filters;
 using DokployMonitor.Web.Hubs;
 using DokployMonitor.Web.Options;
 using DokployMonitor.Web.Services;
@@ -56,13 +57,14 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
     })
     .AddEntityFrameworkStores<MonitorDbContext>()
+    .AddClaimsPrincipalFactory<MonitorClaimsPrincipalFactory>()
     .AddDefaultTokenProviders();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
     options.LogoutPath = "/Account/Logout";
-    options.AccessDeniedPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromDays(Math.Clamp(authOptions.SessionDays, 1, 365));
     options.SlidingExpiration = true;
     options.Cookie.Name = "trimango-dokploy-monitor.auth";
@@ -77,6 +79,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddSingleton<MonitorState>();
+builder.Services.AddScoped<ConnectionService>();
 builder.Services.AddScoped<DashboardQueryService>();
 builder.Services.AddScoped<DeploymentSyncService>();
 
@@ -84,7 +87,11 @@ builder.Services.AddHostedService<DeploymentSyncWorker>();
 builder.Services.AddHostedService<QueueSyncWorker>();
 builder.Services.AddHostedService<RetentionWorker>();
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    // Varsayilan kimlik bilgileri degistirilmeden panelin hicbir yeri kullanilamaz.
+    options.Filters.Add<RequireCredentialChangeFilter>();
+});
 builder.Services.AddSignalR();
 builder.Services.AddHealthChecks().AddDbContextCheck<MonitorDbContext>();
 
@@ -92,10 +99,13 @@ var app = builder.Build();
 
 await InitializeDatabaseAsync(app);
 
-// Kayit ekrani yok: ilk yonetici hesabi burada olusur (varsa dokunulmaz).
 await using (var seedScope = app.Services.CreateAsyncScope())
 {
+    // Kayit ekrani yok: ilk yonetici hesabi burada olusur (varsa dokunulmaz).
     await IdentitySeeder.SeedAsync(seedScope.ServiceProvider);
+
+    // Ortam degiskenlerindeki tek baglanti varsa veritabanina tasi (geriye uyumluluk).
+    await seedScope.ServiceProvider.GetRequiredService<ConnectionService>().ImportFromConfigurationAsync();
 }
 
 if (!app.Environment.IsDevelopment())

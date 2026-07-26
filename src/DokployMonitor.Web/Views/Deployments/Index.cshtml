@@ -66,6 +66,20 @@
                 <input class="form-control form-control-sm" id="f-q" name="q" value="@filter.Q"
                        placeholder="Servis, proje veya hata metni" />
             </div>
+            @* Baglanti filtresi yalnizca birden fazla Dokploy sunucusu tanimliysa anlamli. *@
+            @if (Model.ConnectionNames.Count > 1)
+            {
+                <div class="col-md-3">
+                    <label class="form-label small text-secondary mb-1" for="f-connection">Sunucu (baglanti)</label>
+                    <select class="form-select form-select-sm" id="f-connection" name="connectionId">
+                        <option value="">Tum baglantilar</option>
+                        @foreach (var (id, name) in Model.ConnectionNames.OrderBy(pair => pair.Value))
+                        {
+                            <option value="@id" selected="@(id == filter.ConnectionId)">@name</option>
+                        }
+                    </select>
+                </div>
+            }
         </div>
         <div class="d-flex gap-2 mt-2">
             <button class="btn btn-sm btn-outline-light" type="submit">Filtrele</button>
@@ -109,7 +123,15 @@
                     <tr class="@(d.Status.IsFailure() ? "row-failed" : "")">
                         <td><span class="status-badge @StatusCss(d.Status)">@StatusLabel(d.Status)</span></td>
                         <td>
-                            <div class="fw-semibold">@d.DisplayName</div>
+                            <div class="fw-semibold">
+                                @d.DisplayName
+                                @if (Model.ConnectionNames.Count > 1 && d.ConnectionId is { } connectionId)
+                                {
+                                    <span class="badge text-bg-dark border border-secondary-subtle">
+                                        @Model.ConnectionNames.GetValueOrDefault(connectionId, connectionId)
+                                    </span>
+                                }
+                            </div>
                             @if (d.EnvironmentName is not null)
                             {
                                 <div class="small text-secondary">@d.EnvironmentName</div>

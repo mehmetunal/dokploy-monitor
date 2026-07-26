@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Threading.Channels;
 using DokployMonitor.Core.Queueing;
 
@@ -16,13 +17,15 @@ public sealed class MonitorState
             FullMode = BoundedChannelFullMode.DropWrite,
         });
 
-    private volatile QueueSnapshot _queue = QueueSnapshot.Empty;
+    // Kuyruk baglanti basina tutulur: her Dokploy sunucusunun kendi kuyrugu var.
+    private readonly ConcurrentDictionary<string, QueueSnapshot> _queues = new(StringComparer.Ordinal);
 
-    public QueueSnapshot Queue
-    {
-        get => _queue;
-        set => _queue = value;
-    }
+    public IReadOnlyDictionary<string, QueueSnapshot> Queues => _queues;
+
+    public void SetQueue(string connectionId, QueueSnapshot snapshot) => _queues[connectionId] = snapshot;
+
+    /// <summary>Baglanti silindiginde/kapatildiginda kuyruk goruntusunu dusur.</summary>
+    public void ForgetQueue(string connectionId) => _queues.TryRemove(connectionId, out _);
 
     public DateTimeOffset? LastSyncAt { get; set; }
     public string? LastSyncError { get; set; }

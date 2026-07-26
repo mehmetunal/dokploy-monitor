@@ -35,7 +35,8 @@
 
         if (filter.text) {
             const needle = filter.text.toLowerCase();
-            const haystack = [row.serviceName, row.projectName, row.environmentName, row.errorSummary, row.serviceType]
+            const haystack = [row.serviceName, row.projectName, row.environmentName,
+                              row.errorSummary, row.serviceType, row.connectionName]
                 .filter(Boolean).join(' ').toLowerCase();
             if (!haystack.includes(needle)) return false;
         }
@@ -175,7 +176,10 @@
         body.innerHTML = rows.map(function (r) {
             return '<tr>' +
                 '<td><span class="queue-position">' + (r.position || '?') + '</span></td>' +
-                '<td>' + dm.escapeHtml(r.serviceLabel) + '</td>' +
+                '<td>' + dm.escapeHtml(r.serviceLabel) +
+                    (r.connectionName
+                        ? ' <span class="badge text-bg-dark border border-secondary-subtle">' + dm.escapeHtml(r.connectionName) + '</span>'
+                        : '') + '</td>' +
                 '<td class="text-secondary">' + dm.escapeHtml(r.jobType || '') + '</td>' +
                 '<td class="text-secondary">' + dm.relativeTime(r.enqueuedAt) + '</td>' +
                 '</tr>';
@@ -235,8 +239,14 @@
 
     function serviceCell(r) {
         const project = [r.projectName, r.environmentName].filter(Boolean).join(' / ');
+
+        // Coklu Dokploy kurulumunda kaydin hangi sunucudan geldigi gorunmeli.
+        const connection = r.connectionName
+            ? ' <span class="badge text-bg-dark border border-secondary-subtle">' + dm.escapeHtml(r.connectionName) + '</span>'
+            : '';
+
         return '<div class="fw-semibold">' + dm.escapeHtml(r.serviceName) +
-            (r.isPreview ? ' <span class="badge text-bg-secondary">preview</span>' : '') + '</div>' +
+            (r.isPreview ? ' <span class="badge text-bg-secondary">preview</span>' : '') + connection + '</div>' +
             (project ? '<div class="small text-secondary">' + dm.escapeHtml(project) + '</div>' : '');
     }
 

@@ -11,6 +11,7 @@ namespace DokployMonitor.Web.Services;
 public sealed class DashboardQueryService(
     MonitorDbContext db,
     MonitorState state,
+    ConnectionService connections,
     IOptions<Web.Options.MonitorOptions> options)
 {
     private readonly Web.Options.MonitorOptions _options = options.Value;
@@ -42,14 +43,35 @@ public sealed class DashboardQueryService(
             .Where(d => d.CreatedAt >= cutoff && d.Status == DeploymentStatus.Done && d.DurationSeconds != null)
             .AverageAsync(d => (double?)d.DurationSeconds, ct);
 
-        var queue = state.Queue;
-        var positions = queue.WaitingPositions();
+        var connectionNames = await connections.GetNamesAsync(ct);
 
         // Kuyrukta bekleyen isler: Dokploy bunlar icin henuz deployment kaydi olusturmaz,
-        // dolayisiyla "sirada ne var" bilgisinin tek kaynagi budur.
-        var queueRows = queue.Waiting
-            .Select(job => QueueRow.From(job, positions.GetValueOrDefault(job.Id)))
-            .ToList();
+        // dolayisiyla "sirada ne var" bilgisinin tek kaynagi budur. Her baglantinin
+        // kuyrugu ayri okunur, sira numaralari kendi kuyruguna gore hesaplanir.
+        var queueRows = new List<QueueRow>();
+        var queueProblems = new List<string>();
+
+        foreach (var (connectionId, snapshot) in state.Queues)
+        {
+            var label = connectionNames.GetValueOrDefault(connectionId, connectionId);
+
+            if (!snapshot.IsAvailable)
+            {
+                queueProblems.Add($"{label}: {snapshot.UnavailableReason}");
+                continue;
+            }
+
+            var positions = snapshot.WaitingPositions();
+            queueRows.AddRange(snapshot.Waiting.Select(job =>
+                QueueRow.From(job, positions.GetValueOrDefault(job.Id), label)));
+        }
+
+        queueRows = [.. queueRows.OrderBy(row => row.Position ?? int.MaxValue).ThenBy(row => row.EnqueuedAt)];
+
+        // Yalnizca hicbir kuyruk okunamadiginda gorunume uyari basilir.
+        var queueUnavailableReason = queueRows.Count == 0 && queueProblems.Count > 0
+            ? string.Join(" · ", queueProblems)
+            : null;
 
         var notifications = await db.WebhookNotifications
             .OrderByDescending(n => n.ReceivedAt)
@@ -57,6 +79,9 @@ public sealed class DashboardQueryService(
             .ToListAsync(ct);
 
         var longest = active.FirstOrDefault();
+
+        string? Label(TrackedDeployment deployment) =>
+            deployment.ConnectionId is { } id ? connectionNames.GetValueOrDefault(id, id) : null;
 
         return new DashboardSnapshot
         {
@@ -72,11 +97,11 @@ public sealed class DashboardQueryService(
                 LastSyncAt = state.LastSyncAt,
                 SyncError = state.LastSyncError,
             },
-            Active = [.. active.Select(d => DeploymentRow.From(d))],
-            Recent = [.. recent.Select(d => DeploymentRow.From(d))],
+            Active = [.. active.Select(d => DeploymentRow.From(d, connectionName: Label(d)))],
+            Recent = [.. recent.Select(d => DeploymentRow.From(d, connectionName: Label(d)))],
             Queue = queueRows,
             Notifications = [.. notifications.Select(NotificationRow.From)],
-            QueueUnavailableReason = queue.UnavailableReason,
+            QueueUnavailableReason = queueUnavailableReason,
         };
     }
 
@@ -187,6 +212,11 @@ public sealed class DashboardQueryService(
         if (!string.IsNullOrWhiteSpace(filter.Project))
         {
             q = q.Where(d => d.ProjectName == filter.Project);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.ConnectionId))
+        {
+            q = q.Where(d => d.ConnectionId == filter.ConnectionId);
         }
 
         if (!string.IsNullOrWhiteSpace(filter.Status)

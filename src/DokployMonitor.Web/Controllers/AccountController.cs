@@ -75,6 +75,11 @@ public sealed class AccountController(
         return RedirectToLocal(input.ReturnUrl);
     }
 
+    /// <summary>Yetkisi olmayan kullanici (or. Viewer, SuperAdmin islemi denerse) buraya duser.</summary>
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult AccessDenied() => View();
+
     [HttpPost]
     [Authorize]
     [ValidateAntiForgeryToken]
@@ -82,6 +87,102 @@ public sealed class AccountController(
     {
         await signInManager.SignOutAsync();
         return RedirectToAction(nameof(Login));
+    }
+
+    /// <summary>
+    /// Varsayilan kimlik bilgileriyle olusturulan hesabin ilk girisinde zorunlu adim:
+    /// e-posta ve parola birlikte degistirilir (bkz. RequireCredentialChangeFilter).
+    /// </summary>
+    [HttpGet]
+    [Authorize]
+    public IActionResult ChangeCredentials()
+    {
+        ViewData["Forced"] = User.HasClaim(MonitorClaims.MustChangeCredentials, "true");
+        return View(new ChangeCredentialsInput { NewEmail = User.Identity?.Name });
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangeCredentials(
+        ChangeCredentialsInput input,
+        [FromServices] IValidator<ChangeCredentialsInput> credentialsValidator,
+        CancellationToken ct)
+    {
+        var forced = User.HasClaim(MonitorClaims.MustChangeCredentials, "true");
+        ViewData["Forced"] = forced;
+
+        var validation = await credentialsValidator.ValidateAsync(input, ct);
+        foreach (var error in validation.Errors)
+        {
+            ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+        }
+
+        var user = await userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            await signInManager.SignOutAsync();
+            return RedirectToAction(nameof(Login));
+        }
+
+        if (!await userManager.CheckPasswordAsync(user, input.CurrentPassword ?? string.Empty))
+        {
+            ModelState.AddModelError(nameof(input.CurrentPassword), "Mevcut parola hatali.");
+        }
+
+        // Zorunlu adimda e-posta da gercekten degismeli: varsayilan hesap kalmasin.
+        if (forced && string.Equals(user.Email, input.NewEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError(
+                nameof(input.NewEmail),
+                "Varsayilan e-postadan farkli bir adres girmelisiniz.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(input);
+        }
+
+        if (!string.Equals(user.Email, input.NewEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            var emailResult = await userManager.SetEmailAsync(user, input.NewEmail);
+            var nameResult = await userManager.SetUserNameAsync(user, input.NewEmail);
+
+            if (!AddErrors(emailResult) || !AddErrors(nameResult))
+            {
+                return View(input);
+            }
+
+            user.EmailConfirmed = true;
+        }
+
+        var passwordResult = await userManager.ChangePasswordAsync(user, input.CurrentPassword!, input.NewPassword!);
+        if (!AddErrors(passwordResult))
+        {
+            return View(input);
+        }
+
+        user.MustChangeCredentials = false;
+        await userManager.UpdateAsync(user);
+
+        // Cerezdeki talepler tazelenir; "degistirmelisin" bayragi hemen kalkar.
+        await signInManager.RefreshSignInAsync(user);
+
+        logger.LogInformation("Kimlik bilgileri guncellendi: {Email}", user.Email);
+        TempData["Message"] = "Kimlik bilgileriniz guncellendi.";
+
+        return RedirectToAction("Index", "Dashboard");
+    }
+
+    /// <summary>Identity hatalarini ModelState'e tasir; islem basarili ise true.</summary>
+    private bool AddErrors(IdentityResult result)
+    {
+        foreach (var error in result.Errors)
+        {
+            ModelState.AddModelError(string.Empty, error.Description);
+        }
+
+        return result.Succeeded;
     }
 
     /// <summary>Acik yonlendirme (open redirect) acigini kapatmak icin yalnizca yerel adresler.</summary>

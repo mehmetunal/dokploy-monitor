@@ -1,9 +1,11 @@
 using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Core.Deployments;
+using DokployMonitor.Infrastructure.Identity;
 using DokployMonitor.Infrastructure.Logs;
 using DokployMonitor.Web.Models;
 using DokployMonitor.Web.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +15,8 @@ public sealed class DeploymentsController(
     DashboardQueryService dashboard,
     IDeploymentLogReader logReader,
     IContainerLogReader containerLogReader,
-    IDokployClient dokploy,
+    IDokployClientFactory clientFactory,
+    ConnectionService connections,
     MonitorState state,
     IOptions<LogOptions> logOptions,
     ILogger<DeploymentsController> logger) : Controller
@@ -44,6 +47,7 @@ public sealed class DeploymentsController(
             Deployments = results,
             Projects = await dashboard.GetProjectNamesAsync(ct),
             Filter = filter,
+            ConnectionNames = await connections.GetNamesAsync(ct),
         });
     }
 
@@ -157,15 +161,31 @@ public sealed class DeploymentsController(
         return result;
     }
 
+    /// <summary>Deployment durdurma — yalnizca SuperAdmin.</summary>
     [HttpPost]
+    [Authorize(Roles = MonitorRoles.SuperAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Kill(string id, CancellationToken ct)
     {
+        var deployment = await dashboard.FindAsync(id, ct);
+        if (deployment is null)
+        {
+            return NotFound();
+        }
+
+        var client = await ResolveClientAsync(deployment, ct);
+        if (client is null)
+        {
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
         try
         {
-            await dokploy.KillDeploymentAsync(id, ct);
+            await client.KillDeploymentAsync(id, ct);
             state.RequestSync(SyncTrigger.UserAction);
             TempData["Message"] = "Deployment durdurma istegi gonderildi.";
+            logger.LogInformation(
+                "Deployment durduruldu: {DeploymentId} (islem: {Actor})", id, User.Identity?.Name);
         }
         catch (Exception ex)
         {
@@ -176,9 +196,26 @@ public sealed class DeploymentsController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
+    /// <summary>Yeniden deploy — yalnizca SuperAdmin.</summary>
     [HttpPost]
+    [Authorize(Roles = MonitorRoles.SuperAdmin)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Redeploy(string id, CancellationToken ct)
+    public Task<IActionResult> Redeploy(string id, CancellationToken ct) =>
+        TriggerDeployAsync(id, replay: false, ct);
+
+    /// <summary>
+    /// Replay: eski bir deployment kaydindan ayni servisin deploy'unu tekrar tetikler.
+    /// Dokploy API'si belirli bir commit'i deploy edemedigi icin kaynagin **guncel**
+    /// hali derlenir; kayit yalnizca hangi servisin ve hangi deployment'in tekrarlandigini
+    /// belirler (baslikta gorunur). Yalnizca SuperAdmin.
+    /// </summary>
+    [HttpPost]
+    [Authorize(Roles = MonitorRoles.SuperAdmin)]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> Replay(string id, CancellationToken ct) =>
+        TriggerDeployAsync(id, replay: true, ct);
+
+    private async Task<IActionResult> TriggerDeployAsync(string id, bool replay, CancellationToken ct)
     {
         var deployment = await dashboard.FindAsync(id, ct);
         if (deployment is null)
@@ -186,15 +223,25 @@ public sealed class DeploymentsController(
             return NotFound();
         }
 
+        var client = await ResolveClientAsync(deployment, ct);
+        if (client is null)
+        {
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var title = replay
+            ? $"Replay: {deployment.CreatedAt.ToLocalTime():dd.MM.yyyy HH:mm} ({deployment.DeploymentId})"
+            : "Redeploy (Monitor)";
+
         try
         {
             if (deployment.ComposeId is { } composeId)
             {
-                await dokploy.RedeployComposeAsync(composeId, ct: ct);
+                await client.RedeployComposeAsync(composeId, title, ct);
             }
             else if (deployment.ApplicationId is { } applicationId)
             {
-                await dokploy.RedeployApplicationAsync(applicationId, ct: ct);
+                await client.RedeployApplicationAsync(applicationId, title, ct);
             }
             else
             {
@@ -203,15 +250,47 @@ public sealed class DeploymentsController(
             }
 
             state.RequestSync(SyncTrigger.UserAction);
-            TempData["Message"] = "Yeniden deploy istegi kuyruga eklendi.";
+            TempData["Message"] = replay
+                ? "Replay istegi kuyruga eklendi. Not: Dokploy kaynagin guncel halini derler."
+                : "Yeniden deploy istegi kuyruga eklendi.";
+
+            logger.LogInformation(
+                "{Action} tetiklendi: {DeploymentId} (islem: {Actor})",
+                replay ? "Replay" : "Redeploy",
+                id,
+                User.Identity?.Name);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Yeniden deploy basarisiz: {DeploymentId}", id);
-            TempData["Error"] = $"Yeniden deploy basarisiz: {ex.Message}";
+            logger.LogError(ex, "{Action} basarisiz: {DeploymentId}", replay ? "Replay" : "Redeploy", id);
+            TempData["Error"] = $"{(replay ? "Replay" : "Yeniden deploy")} basarisiz: {ex.Message}";
         }
 
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>
+    /// Kaydin geldigi Dokploy baglantisi icin istemci uretir. Coklu baglanti oncesinde
+    /// toplanan kayitlarda baglanti bilgisi olmadigi icin tek etkin baglanti varsa ona duser.
+    /// </summary>
+    private async Task<IDokployClient?> ResolveClientAsync(TrackedDeployment deployment, CancellationToken ct)
+    {
+        var enabled = await connections.GetEnabledAsync(ct);
+
+        var connection = deployment.ConnectionId is { } id
+            ? enabled.FirstOrDefault(c => c.Id == id)
+            : enabled.Count == 1 ? enabled[0] : null;
+
+        if (connection is null)
+        {
+            TempData["Error"] = deployment.ConnectionId is null
+                ? "Bu kaydin hangi Dokploy baglantisindan geldigi bilinmiyor; birden fazla baglanti tanimli oldugu icin islem yapilamadi."
+                : "Kaydin baglantisi bulunamadi ya da devre disi birakilmis.";
+
+            return null;
+        }
+
+        return clientFactory.Create(connection);
     }
 
     private static async Task<LogReadResult> ReadArchivedAsync(

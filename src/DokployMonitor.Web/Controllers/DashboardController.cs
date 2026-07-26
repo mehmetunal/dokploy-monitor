@@ -26,13 +26,28 @@ public sealed class DashboardController(DashboardQueryService dashboard) : Contr
 
     /// <summary>Dokploy baglantisi, container log erisimi ve yetenek tespiti.</summary>
     public async Task<IActionResult> Diagnostics(
-        [FromServices] IDokployClient dokploy,
+        [FromServices] IDokployClientFactory clientFactory,
+        [FromServices] ConnectionService connections,
         [FromServices] IContainerLogReader containerLogReader,
         CancellationToken ct)
     {
+        // Her baglanti ayri kontrol edilir: biri bozuksa hangisi oldugu gorunur.
+        var results = new List<ConnectionHealth>();
+
+        foreach (var connection in await connections.GetAllAsync(ct))
+        {
+            results.Add(new ConnectionHealth
+            {
+                Connection = connection,
+                Health = connection.Enabled
+                    ? await clientFactory.Create(connection).CheckHealthAsync(ct)
+                    : null,
+            });
+        }
+
         return View(new DiagnosticsViewModel
         {
-            Dokploy = await dokploy.CheckHealthAsync(ct),
+            Connections = results,
             Docker = await containerLogReader.CheckHealthAsync(ct),
         });
     }

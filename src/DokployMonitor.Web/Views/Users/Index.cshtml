@@ -1,0 +1,139 @@
+@model DokployMonitor.Web.Models.UserListViewModel
+@using DokployMonitor.Infrastructure.Identity
+@using Microsoft.Extensions.Options
+@inject IOptions<DokployMonitor.Web.Options.AuthOptions> AuthOptions
+@{
+    ViewData["Title"] = "Kullanicilar";
+    var input = Model.NewUser;
+    var minimumLength = Math.Clamp(AuthOptions.Value.MinimumPasswordLength, 8, 64);
+}
+
+<h1 class="h4 mb-1">Kullanicilar</h1>
+<p class="small text-secondary mb-3">
+    Kendi kendine kayit ekrani yoktur; hesaplar yalnizca <code>@MonitorRoles.SuperAdmin</code>
+    rolundeki kullanicilar tarafindan olusturulur. <code>@MonitorRoles.Viewer</code> rolu salt
+    okumadir: panolari ve loglari gorur, deployment durdurma / yeniden deploy yapamaz.
+</p>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger py-2 small" role="alert">
+        <div asp-validation-summary="All" class="mb-0"></div>
+    </div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">Mevcut Kullanicilar (@Model.Users.Count)</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>E-posta</th>
+                            <th style="width:8rem">Rol</th>
+                            <th style="width:7rem">Durum</th>
+                            <th style="width:6rem"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model.Users)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@user.Email</div>
+                                    @if (user.DisplayName is not null)
+                                    {
+                                        <div class="small text-secondary">@user.DisplayName</div>
+                                    }
+                                </td>
+                                <td>
+                                    @foreach (var role in user.Roles)
+                                    {
+                                        <span class="badge @(role == MonitorRoles.SuperAdmin ? "text-bg-warning" : "text-bg-secondary")">@role</span>
+                                    }
+                                </td>
+                                <td class="small">
+                                    @if (user.LockedOut)
+                                    {
+                                        <span class="text-danger">kilitli</span>
+                                    }
+                                    else if (user.MustChangeCredentials)
+                                    {
+                                        <span class="text-warning">kimlik degisecek</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-success">aktif</span>
+                                    }
+                                    @if (user.IsCurrentUser)
+                                    {
+                                        <span class="badge text-bg-secondary">siz</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (!user.IsCurrentUser)
+                                    {
+                                        <form method="post" asp-action="ToggleLock" asp-route-id="@user.Id" class="m-0">
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit">
+                                                @(user.LockedOut ? "Ac" : "Kilitle")
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">Yeni Kullanici</div>
+            <div class="card-body">
+                <form method="post" asp-action="Create">
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" asp-for="NewUser.Email">E-posta</label>
+                        <input class="form-control form-control-sm" asp-for="NewUser.Email" type="email" name="Email"
+                               value="@input.Email" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" asp-for="NewUser.DisplayName">Ad (istege bagli)</label>
+                        <input class="form-control form-control-sm" asp-for="NewUser.DisplayName" name="DisplayName"
+                               value="@input.DisplayName" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" asp-for="NewUser.Password">Baslangic parolasi</label>
+                        <input class="form-control form-control-sm" asp-for="NewUser.Password" type="password" name="Password" />
+                        <div class="form-text small">En az @minimumLength karakter; buyuk harf, kucuk harf ve rakam.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-secondary" asp-for="NewUser.Role">Rol</label>
+                        <select class="form-select form-select-sm" asp-for="NewUser.Role" name="Role">
+                            @foreach (var role in MonitorRoles.All)
+                            {
+                                <option value="@role" selected="@(role == input.Role)">@role</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" asp-for="NewUser.MustChangeCredentials" type="checkbox"
+                               name="MustChangeCredentials" value="true" checked="@input.MustChangeCredentials" />
+                        <label class="form-check-label small" asp-for="NewUser.MustChangeCredentials">
+                            Ilk giriste kimlik bilgilerini degistirsin
+                        </label>
+                    </div>
+
+                    <button class="btn btn-brand btn-sm w-100" type="submit">Olustur</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -13,5 +13,11 @@ public sealed class ApplicationUser : IdentityUser
 
     public DateTimeOffset CreatedAt { get; set; }
 
+    /// <summary>
+    /// true ise kullanici panele giremez, once e-posta ve parolasini degistirmek
+    /// zorundadir. Varsayilan kimlik bilgileriyle olusturulan hesaplarda acilir.
+    /// </summary>
+    public bool MustChangeCredentials { get; set; }
+
     public string Label => string.IsNullOrWhiteSpace(DisplayName) ? (Email ?? UserName ?? Id) : DisplayName!;
 }

@@ -1,62 +1,105 @@
 @model DokployMonitor.Web.Models.DiagnosticsViewModel
 @using Microsoft.Extensions.Options
-@using DokployMonitor.Infrastructure.Dokploy
+@using DokployMonitor.Infrastructure.Identity
 @using DokployMonitor.Infrastructure.Logs
-@inject IOptions<DokployOptions> DokployOptions
 @inject IOptions<LogOptions> LogOptions
 @inject IOptions<DokployMonitor.Infrastructure.Docker.DockerOptions> DockerOptions
 @{
     ViewData["Title"] = "Tanilama";
-    var dokploy = DokployOptions.Value;
     var logs = LogOptions.Value;
     var docker = DockerOptions.Value;
-    var health = Model.Dokploy;
 
     string Mark(bool ok) => ok ? "✔" : "✘";
     string Tone(bool ok) => ok ? "text-success" : "text-danger";
 }
 
-<h1 class="h4 mb-3">Kurulum Tanilama</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Kurulum Tanilama</h1>
+    @if (User.IsInRole(MonitorRoles.SuperAdmin))
+    {
+        <a class="btn btn-sm btn-outline-light" asp-controller="Connections" asp-action="Index">Baglantilari yonet</a>
+    }
+</div>
 
 <div class="row g-3">
     <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">Dokploy Baglantisi</div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-6">Sunucuya erisim</dt>
-                    <dd class="col-6 @Tone(health.IsReachable)">@Mark(health.IsReachable)</dd>
-
-                    <dt class="col-6">API anahtari gecerli</dt>
-                    <dd class="col-6 @Tone(health.IsAuthorized)">@Mark(health.IsAuthorized)</dd>
-
-                    <dt class="col-6">deployment.allCentralized</dt>
-                    <dd class="col-6 @Tone(health.SupportsCentralizedDeployments)">
-                        @Mark(health.SupportsCentralizedDeployments)
-                        @if (!health.SupportsCentralizedDeployments)
-                        {
-                            <span class="small text-secondary d-block">Servis servis toplama moduna dusulecek.</span>
-                        }
-                    </dd>
-
-                    <dt class="col-6">deployment.queueList</dt>
-                    <dd class="col-6 @Tone(health.SupportsQueueList)">
-                        @Mark(health.SupportsQueueList)
-                        @if (!health.SupportsQueueList)
-                        {
-                            <span class="small text-secondary d-block">Kuyruk gorunumu devre disi kalir.</span>
-                        }
-                    </dd>
-                </dl>
-
-                @if (health.Error is not null)
-                {
-                    <div class="alert alert-danger mt-3 mb-0 py-2 small">@health.Error</div>
-                }
+        @if (Model.Connections.Count == 0)
+        {
+            <div class="alert alert-warning py-2 small">
+                Tanimli Dokploy baglantisi yok. <strong>Baglantilar</strong> ekranindan ekleyin
+                ya da <code>Dokploy__BaseUrl</code> / <code>Dokploy__ApiKey</code> degiskenlerini verin.
             </div>
-        </div>
+        }
 
-        <div class="card mt-3">
+        @foreach (var item in Model.Connections)
+        {
+            var connection = item.Connection;
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>
+                        @connection.Name
+                        @if (!connection.Enabled)
+                        {
+                            <span class="badge text-bg-secondary ms-1">devre disi</span>
+                        }
+                    </span>
+                    <code class="small text-secondary">@connection.BaseUrl</code>
+                </div>
+                <div class="card-body">
+                    @if (item.Health is { } health)
+                    {
+                        <dl class="row mb-0">
+                            <dt class="col-6">Sunucuya erisim</dt>
+                            <dd class="col-6 @Tone(health.IsReachable)">@Mark(health.IsReachable)</dd>
+
+                            <dt class="col-6">API anahtari gecerli</dt>
+                            <dd class="col-6 @Tone(health.IsAuthorized)">@Mark(health.IsAuthorized)</dd>
+
+                            <dt class="col-6">deployment.allCentralized</dt>
+                            <dd class="col-6 @Tone(health.SupportsCentralizedDeployments)">
+                                @Mark(health.SupportsCentralizedDeployments)
+                                @if (!health.SupportsCentralizedDeployments)
+                                {
+                                    <span class="small text-secondary d-block">Servis servis toplama moduna duser.</span>
+                                }
+                            </dd>
+
+                            <dt class="col-6">deployment.queueList</dt>
+                            <dd class="col-6 @Tone(health.SupportsQueueList)">
+                                @Mark(health.SupportsQueueList)
+                                @if (!health.SupportsQueueList)
+                                {
+                                    <span class="small text-secondary d-block">Kuyruk gorunumu devre disi kalir.</span>
+                                }
+                            </dd>
+                        </dl>
+
+                        @if (health.Error is not null)
+                        {
+                            <div class="alert alert-danger mt-3 mb-0 py-2 small">@health.Error</div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="small text-secondary">Baglanti devre disi; kontrol edilmedi.</div>
+                    }
+
+                    <div class="small text-secondary mt-2">
+                        API anahtari: <code>@connection.MaskedApiKey</code>
+                        @if (connection.LastSyncAt is { } lastSync)
+                        {
+                            <span>· son senkron: @lastSync.ToLocalTime().ToString("dd.MM HH:mm:ss")</span>
+                        }
+                    </div>
+                    @if (connection.LastSyncError is not null)
+                    {
+                        <div class="small text-warning mt-1">Son senkron hatasi: @connection.LastSyncError</div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card">
             <div class="card-header">Container Logu (docker logs)</div>
             <div class="card-body">
                 <dl class="row mb-0 small">
@@ -98,11 +141,11 @@
             <div class="card-header">Yapilandirma</div>
             <div class="card-body">
                 <dl class="row mb-0 small">
-                    <dt class="col-5">Dokploy URL</dt>
-                    <dd class="col-7">@(string.IsNullOrWhiteSpace(dokploy.BaseUrl) ? "(tanimli degil)" : dokploy.BaseUrl)</dd>
-
-                    <dt class="col-5">API anahtari</dt>
-                    <dd class="col-7">@(string.IsNullOrWhiteSpace(dokploy.ApiKey) ? "(tanimli degil)" : "•••• tanimli")</dd>
+                    <dt class="col-5">Baglanti sayisi</dt>
+                    <dd class="col-7">
+                        @Model.Connections.Count
+                        (@Model.Connections.Count(c => c.Connection.Enabled) etkin)
+                    </dd>
 
                     <dt class="col-5">Log mount</dt>
                     <dd class="col-7">
@@ -126,8 +169,10 @@
         <div class="card mt-3">
             <div class="card-header">Webhook Kurulumu</div>
             <div class="card-body small text-secondary">
-                Dokploy → Settings → Notifications → Webhook altinda su URL'i tanimlayin:
+                Dokploy → Settings → Notifications → Add Notification (saglayici: <strong>Custom</strong>)
+                altinda su URL'i tanimlayin:
                 <pre class="mt-2 mb-0"><code>@($"{Context.Request.Scheme}://{Context.Request.Host}/api/webhooks/dokploy?token=<TOKEN>")</code></pre>
+                <div class="mt-2">Ayni URL tum Dokploy sunucularinda kullanilabilir; token ortaktir.</div>
             </div>
         </div>
     </div>

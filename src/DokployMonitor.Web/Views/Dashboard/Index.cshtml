@@ -1,6 +1,9 @@
 @model DokployMonitor.Core.Dashboard.DashboardSnapshot
 @{
     ViewData["Title"] = "Canli Pano";
+
+    // Navbar'daki baglanti rozetini bu sayfa yonetiyor (SignalR + polling yedegi).
+    ViewData["ShowConnectionStatus"] = true;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">

@@ -1,5 +1,6 @@
 using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Core.Dashboard;
+using DokployMonitor.Core.Dokploy;
 using DokployMonitor.Core.Deployments;
 
 namespace DokployMonitor.Web.Models;
@@ -9,6 +10,9 @@ public sealed class DeploymentHistoryViewModel
     public required IReadOnlyList<TrackedDeployment> Deployments { get; init; }
     public required IReadOnlyList<string> Projects { get; init; }
     public required DeploymentFilter Filter { get; init; }
+
+    /// <summary>Baglanti kimligi -> ad (filtre kutusu ve satir etiketleri icin).</summary>
+    public required IReadOnlyDictionary<string, string> ConnectionNames { get; init; }
 }
 
 public sealed class DeploymentDetailsViewModel
@@ -28,10 +32,17 @@ public sealed class DeploymentDetailsViewModel
     public bool CanStreamLive { get; init; }
 }
 
-/// <summary>Kurulum tanilama ekrani: Dokploy baglantisi + container log erisimi.</summary>
+/// <summary>Bir Dokploy baglantisinin saglik sonucu; devre disi baglantilarda <c>Health</c> bostur.</summary>
+public sealed class ConnectionHealth
+{
+    public required DokployConnection Connection { get; init; }
+    public DokployHealth? Health { get; init; }
+}
+
+/// <summary>Kurulum tanilama ekrani: tum Dokploy baglantilari + container log erisimi.</summary>
 public sealed class DiagnosticsViewModel
 {
-    public required DokployHealth Dokploy { get; init; }
+    public required IReadOnlyList<ConnectionHealth> Connections { get; init; }
     public required ContainerLogHealth Docker { get; init; }
 }
 

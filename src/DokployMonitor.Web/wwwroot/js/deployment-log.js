@@ -38,7 +38,22 @@
         .withAutomaticReconnect()
         .build();
 
+    // Navbar rozetini bu sayfada log akisi yonetir; aksi halde "baglaniyor…" takili kalirdi.
+    connection.onreconnecting(function () {
+        dm.setConnectionStatus('yeniden baglaniyor…', 'text-bg-warning');
+    });
+
+    connection.onreconnected(function () {
+        dm.setConnectionStatus('canli', 'text-bg-success');
+    });
+
+    connection.onclose(function () {
+        dm.setConnectionStatus('baglanti kapandi', 'text-bg-secondary');
+    });
+
     connection.start().then(function () {
+        dm.setConnectionStatus('canli', 'text-bg-success');
+
         connection.stream('StreamLogs', config.deploymentId, config.offset).subscribe({
             next: function (chunk) {
                 if (chunk && chunk.lines && chunk.lines.length) {
@@ -55,5 +70,6 @@
         });
     }).catch(function () {
         if (statusEl) statusEl.textContent = 'canli akis baslatilamadi';
+        dm.setConnectionStatus('baglanti kurulamadi', 'text-bg-warning');
     });
 })();

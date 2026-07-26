@@ -37,10 +37,16 @@ public sealed record DeploymentRow
     public bool IsPreview { get; init; }
     public bool HasLog { get; init; }
 
+    /// <summary>Kaydin geldigi Dokploy baglantisinin adi (coklu sunucu kurulumlarinda).</summary>
+    public string? ConnectionName { get; init; }
+
     /// <summary>Kuyrukta bekleyen isler icin sira numarasi; calisanlarda null.</summary>
     public int? QueuePosition { get; init; }
 
-    public static DeploymentRow From(TrackedDeployment d, int? queuePosition = null) => new()
+    public static DeploymentRow From(
+        TrackedDeployment d,
+        int? queuePosition = null,
+        string? connectionName = null) => new()
     {
         DeploymentId = d.DeploymentId,
         Status = d.Status.ToString().ToLowerInvariant(),
@@ -58,6 +64,7 @@ public sealed record DeploymentRow
         IsPreview = d.IsPreviewDeployment,
         HasLog = !string.IsNullOrWhiteSpace(d.LogPath) || !string.IsNullOrWhiteSpace(d.ArchivedLogPath),
         QueuePosition = queuePosition,
+        ConnectionName = connectionName,
     };
 
     /// <summary>Hata mesajinin tabloya sigacak ilk anlamli satiri.</summary>
@@ -88,7 +95,10 @@ public sealed record QueueRow
     public int? Position { get; init; }
     public string? ServiceId { get; init; }
 
-    public static QueueRow From(QueueJob job, int? position) => new()
+    /// <summary>Isin bekledigi Dokploy baglantisinin adi.</summary>
+    public string? ConnectionName { get; init; }
+
+    public static QueueRow From(QueueJob job, int? position, string? connectionName = null) => new()
     {
         JobId = job.Id,
         State = job.State,
@@ -98,6 +108,7 @@ public sealed record QueueRow
         EnqueuedAt = job.EnqueuedAt,
         Position = position,
         ServiceId = job.ServiceId,
+        ConnectionName = connectionName,
     };
 }
 

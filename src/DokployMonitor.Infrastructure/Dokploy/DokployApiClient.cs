@@ -3,9 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Core.Deployments;
+using DokployMonitor.Core.Dokploy;
 using DokployMonitor.Core.Queueing;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace DokployMonitor.Infrastructure.Dokploy;
 
@@ -19,12 +19,17 @@ namespace DokployMonitor.Infrastructure.Dokploy;
 ///     ardindan her servis icin `deployment.all` / `deployment.allByCompose` cagrilir.
 /// Mod, ilk cagrida otomatik tespit edilir ve hatirlanir.
 /// </summary>
+/// <remarks>
+/// Ornekler tek bir baglantiya baglidir ve <see cref="DokployClientFactory"/> tarafindan
+/// uretilir; merkezi/legacy mod tespiti ornek icinde hatirlanir.
+/// </remarks>
 public sealed class DokployApiClient(
     HttpClient httpClient,
-    IOptions<DokployOptions> options,
+    DokployConnection connection,
     ILogger<DokployApiClient> logger) : IDokployClient
 {
-    private readonly DokployOptions _options = options.Value;
+    /// <summary>Bu istemcinin bagli oldugu Dokploy baglantisi.</summary>
+    public DokployConnection Connection { get; } = connection;
 
     /// <summary>null = henuz denenmedi, true/false = tespit edildi.</summary>
     private bool? _supportsCentralized;
@@ -32,7 +37,7 @@ public sealed class DokployApiClient(
 
     public async Task<IReadOnlyList<TrackedDeployment>> GetAllDeploymentsAsync(CancellationToken ct = default)
     {
-        if (!_options.ForceLegacyDiscovery && _supportsCentralized != false)
+        if (!connection.ForceLegacyDiscovery && _supportsCentralized != false)
         {
             var (ok, root) = await TryGetJsonAsync("deployment.allCentralized", ct);
             if (ok)
@@ -184,7 +189,7 @@ public sealed class DokployApiClient(
         }
 
         var services = EnumerateServices(projectsRoot).ToList();
-        var gate = new SemaphoreSlim(Math.Max(1, _options.MaxParallelRequests));
+        var gate = new SemaphoreSlim(Math.Max(1, connection.MaxParallelRequests));
         var results = new List<TrackedDeployment>[services.Count];
 
         await Parallel.ForAsync(0, services.Count, ct, async (index, token) =>

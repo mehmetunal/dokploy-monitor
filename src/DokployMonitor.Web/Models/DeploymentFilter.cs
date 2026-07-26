@@ -14,6 +14,9 @@ public sealed class DeploymentFilter
     /// <summary>Servis / proje / hata metninde arama.</summary>
     public string? Q { get; init; }
 
+    /// <summary>Yalnizca bu Dokploy baglantisindan gelen kayitlar.</summary>
+    public string? ConnectionId { get; init; }
+
     /// <summary>Bu tarihten itibaren (gun basi, sunucunun yerel saatine gore).</summary>
     public DateOnly? From { get; init; }
 
@@ -30,6 +33,7 @@ public sealed class DeploymentFilter
         string.IsNullOrWhiteSpace(Project)
         && string.IsNullOrWhiteSpace(Status)
         && string.IsNullOrWhiteSpace(Q)
+        && string.IsNullOrWhiteSpace(ConnectionId)
         && From is null
         && To is null;
 

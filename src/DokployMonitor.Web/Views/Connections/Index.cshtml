@@ -3,6 +3,11 @@
     ViewData["Title"] = L["Connections"].Value;
     var input = Model.NewConnection;
     var editing = !string.IsNullOrWhiteSpace(input.Id);
+
+    // Anahtar forma hic doldurulmadigi icin "kayitli mi" bilgisi listedeki kayittan gelir.
+    var edited = editing
+        ? Model.Connections.FirstOrDefault(connection => connection.Id == input.Id)
+        : null;
 }
 
 <h1 class="h4 mb-1">@L["Dokploy Connections"]</h1>
@@ -42,7 +47,17 @@
                                 <td>
                                     <div class="fw-semibold">@connection.Name</div>
                                     <div class="small text-secondary">@connection.BaseUrl</div>
-                                    <div class="small text-secondary"><code>@connection.MaskedApiKey</code></div>
+                                    <div class="small text-secondary">
+                                        @if (connection.HasApiKey)
+                                        {
+                                            <code>@connection.MaskedApiKey</code>
+                                            <span class="badge text-bg-success ms-1">@L["saved"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge text-bg-danger">@L["not set"]</span>
+                                        }
+                                    </div>
                                 </td>
                                 <td class="small text-secondary">
                                     @L["{0} records", Model.DeploymentCounts.GetValueOrDefault(connection.Id)]
@@ -86,15 +101,15 @@
 
     <div class="col-lg-5">
         <div class="card">
-            <div class="card-header">@(editing ? "Baglantiyi Duzenle" : "Yeni Baglanti")</div>
+            <div class="card-header">@(editing ? L["Edit Connection"].Value : L["New Connection"].Value)</div>
             <div class="card-body">
                 <form method="post" asp-action="Save">
                     <input type="hidden" name="Id" value="@input.Id" />
 
                     <div class="mb-3">
-                        <label class="form-label small text-secondary" for="c-name">Ad</label>
+                        <label class="form-label small text-secondary" for="c-name">@L["Name"]</label>
                         <input class="form-control form-control-sm" id="c-name" name="Name" value="@input.Name"
-                               placeholder="Uretim" />
+                               placeholder="@L["Production"]" />
                     </div>
 
                     <div class="mb-3">
@@ -105,7 +120,19 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small text-secondary" for="c-key">@L["API key"]</label>
+                        <label class="form-label small text-secondary" for="c-key">
+                            @L["API key"]
+                            @* Duzenlemede alan bos gelir; anahtarin kayitli oldugu buradan anlasilir. *@
+                            @if (edited is { HasApiKey: true })
+                            {
+                                <span class="badge text-bg-success ms-1">@L["saved"]</span>
+                                <code class="ms-1">@edited.MaskedApiKey</code>
+                            }
+                            else if (editing)
+                            {
+                                <span class="badge text-bg-danger ms-1">@L["not set"]</span>
+                            }
+                        </label>
                         <input class="form-control form-control-sm" id="c-key" name="ApiKey" type="password"
                                autocomplete="off" />
                         @if (editing)

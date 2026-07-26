@@ -394,6 +394,10 @@ public static class TranslationDefaults
         "Sync error",
         "Status changed",
         "Webhook received",
+        "Name",
+        "saved",
+        "not set",
+        "Production",
     ];
 
     /// <summary>Culture code -> values in the same order as <see cref="Keys"/>.</summary>
@@ -779,6 +783,10 @@ public static class TranslationDefaults
             "Senkron hatasi",
             "Durum degisti",
             "Webhook alindi",
+            "Ad",
+            "kayitli",
+            "tanimli degil",
+            "Uretim",
         ],
         ["de"] =
         [
@@ -1160,6 +1168,10 @@ public static class TranslationDefaults
             "Synchronisierungsfehler",
             "Status geandert",
             "Webhook empfangen",
+            "Name",
+            "gespeichert",
+            "nicht gesetzt",
+            "Produktion",
         ],
         ["fr"] =
         [
@@ -1541,6 +1553,10 @@ public static class TranslationDefaults
             "Erreur de synchronisation",
             "Statut modifie",
             "Webhook recu",
+            "Nom",
+            "enregistre",
+            "non defini",
+            "Production",
         ],
         ["es"] =
         [
@@ -1922,6 +1938,10 @@ public static class TranslationDefaults
             "Error de sincronizacion",
             "Estado cambiado",
             "Webhook recibido",
+            "Nombre",
+            "guardada",
+            "sin definir",
+            "Produccion",
         ],
         ["pt"] =
         [
@@ -2303,6 +2323,10 @@ public static class TranslationDefaults
             "Erro de sincronizacao",
             "Estado alterado",
             "Webhook recebido",
+            "Nome",
+            "salva",
+            "nao definida",
+            "Producao",
         ],
         ["it"] =
         [
@@ -2684,6 +2708,10 @@ public static class TranslationDefaults
             "Errore di sincronizzazione",
             "Stato cambiato",
             "Webhook ricevuto",
+            "Nome",
+            "salvata",
+            "non impostata",
+            "Produzione",
         ],
         ["nl"] =
         [
@@ -3065,6 +3093,10 @@ public static class TranslationDefaults
             "Synchronisatiefout",
             "Status gewijzigd",
             "Webhook ontvangen",
+            "Naam",
+            "opgeslagen",
+            "niet ingesteld",
+            "Productie",
         ],
         ["pl"] =
         [
@@ -3446,6 +3478,10 @@ public static class TranslationDefaults
             "Blad synchronizacji",
             "Zmiana statusu",
             "Odebrano webhook",
+            "Nazwa",
+            "zapisany",
+            "nie ustawiono",
+            "Produkcja",
         ],
         ["ru"] =
         [
@@ -3827,6 +3863,10 @@ public static class TranslationDefaults
             "Ошибка синхронизации",
             "Статус изменён",
             "Webhook получен",
+            "Название",
+            "сохранён",
+            "не задан",
+            "Продакшн",
         ],
         ["uk"] =
         [
@@ -4208,6 +4248,10 @@ public static class TranslationDefaults
             "Помилка синхронізації",
             "Статус змінено",
             "Webhook отримано",
+            "Назва",
+            "збережено",
+            "не задано",
+            "Продакшн",
         ],
         ["ar"] =
         [
@@ -4589,6 +4633,10 @@ public static class TranslationDefaults
             "خطأ في المزامنة",
             "تغيرت الحالة",
             "تم استلام Webhook",
+            "الاسم",
+            "محفوظ",
+            "غير محدد",
+            "الإنتاج",
         ],
         ["zh"] =
         [
@@ -4970,6 +5018,10 @@ public static class TranslationDefaults
             "同步错误",
             "状态已更改",
             "已收到 Webhook",
+            "名称",
+            "已保存",
+            "未设置",
+            "生产",
         ],
         ["ja"] =
         [
@@ -5351,6 +5403,10 @@ public static class TranslationDefaults
             "同期エラー",
             "ステータス変更",
             "Webhook 受信",
+            "名前",
+            "保存済み",
+            "未設定",
+            "本番",
         ],
         ["ko"] =
         [
@@ -5732,6 +5788,10 @@ public static class TranslationDefaults
             "동기화 오류",
             "상태 변경",
             "웹훅 수신",
+            "이름",
+            "저장됨",
+            "설정되지 않음",
+            "프로덕션",
         ],
         ["hi"] =
         [
@@ -6113,6 +6173,10 @@ public static class TranslationDefaults
             "सिंक त्रुटि",
             "स्थिति बदली",
             "वेबहुक प्राप्त",
+            "नाम",
+            "सहेजा गया",
+            "सेट नहीं",
+            "प्रोडक्शन",
         ],
         ["id"] =
         [
@@ -6494,6 +6558,10 @@ public static class TranslationDefaults
             "Kesalahan sinkronisasi",
             "Status berubah",
             "Webhook diterima",
+            "Nama",
+            "tersimpan",
+            "belum diatur",
+            "Produksi",
         ],
     };
 

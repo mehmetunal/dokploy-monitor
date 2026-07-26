@@ -1,5 +1,12 @@
 namespace DokployMonitor.Infrastructure.Dokploy;
 
+/// <summary>
+/// **Istege bagli** ilk kurulum baglantisi. Baglantilar (birden fazla sunucu / API anahtari)
+/// veritabaninda tutulur ve panelin Baglantilar ekranindan yonetilir; bu bolum yalnizca
+/// "ilk acilista bir baglanti ice aktar" kolayligidir (bkz.
+/// <c>ConnectionService.ImportFromConfigurationAsync</c>). Bos birakilirsa uygulama normal
+/// acilir ve baglanti panelden eklenir.
+/// </summary>
 public sealed class DokployOptions
 {
     public const string SectionName = "Dokploy";
@@ -7,10 +14,14 @@ public sealed class DokployOptions
     /// <summary>
     /// Dokploy panelinin koku, /api olmadan. Ornek: https://dokploy.sirket.com
     /// Ayni sunucuda calisiyorsak http://dokploy:3000 (internal network) tercih edilir.
+    /// Bos olabilir; verilirse <see cref="ApiKey"/> de zorunlu olur.
     /// </summary>
     public string BaseUrl { get; set; } = string.Empty;
 
-    /// <summary>Dokploy > Settings > API Keys altindan uretilen anahtar (x-api-key).</summary>
+    /// <summary>
+    /// Dokploy > Settings > API Keys altindan uretilen anahtar (x-api-key).
+    /// Bos olabilir; verilirse <see cref="BaseUrl"/> de zorunlu olur.
+    /// </summary>
     public string ApiKey { get; set; } = string.Empty;
 
     public int TimeoutSeconds { get; set; } = 30;

@@ -95,8 +95,14 @@ Her baglanti bir sunucu + bir API anahtaridir. **Baglantilar** ekrani (SuperAdmi
 eklenir; senkronizasyon tum **etkin** baglantilari dolasir ve her deployment kaydini
 geldigi baglantiyla etiketler.
 
-- Mevcut kurulumlar bozulmaz: `Dokploy__BaseUrl` / `Dokploy__ApiKey` verilmisse ilk acilista
-  **"Varsayilan"** adiyla veritabanina aktarilir ve eski kayitlar bu baglantiya baglanir.
+- **`Dokploy__BaseUrl` / `Dokploy__ApiKey` zorunlu degildir.** Hic verilmezse uygulama normal
+  acilir, log'a *"Tanimli Dokploy baglantisi yok"* uyarisi yazar ve baglantiyi Baglantilar
+  ekranindan eklersiniz. Verilirse ilk acilista **"Varsayilan"** adiyla veritabanina aktarilir
+  ve eski deployment kayitlari bu baglantiya baglanir (geriye uyumluluk).
+  Yalnizca **birini** vermek hatadir: eksik olan icin acilista dogrulama hatasi alirsiniz.
+- Anahtar degistiginde ortam degiskenini guncellemek gerekmez; Baglantilar ekranindan
+  duzenlenir. Duzenleme formunda anahtar alani bos gelir ve kayitli anahtar
+  yesil **kayitli** isaretiyle maskeli gosterilir; bos birakirsaniz mevcut anahtar korunur.
 - Bir baglanti hata verirse digerleri calismaya devam eder; panoda
   *"1/2 baglanti okunamadi"* uyarisi, Baglantilar ve Tanilama ekranlarinda ise
   baglanti basina durum gorunur.
@@ -292,6 +298,9 @@ Ayni pano `en` kulturunde — tum metinler veritabanindaki cevirilerden gelir.
 
 #### Baglantilar (coklu Dokploy sunucusu / API anahtari — SuperAdmin)
 
+Duzenleme modunda anahtar alani bos gelir; kayitli anahtar yesil **kayitli** isareti ve
+maskeli hali ile gosterilir — bos birakilirsa mevcut anahtar korunur.
+
 ![Baglantilar](docs/screenshots/desktop/12-connections.png)
 
 #### Kullanicilar (SuperAdmin)
@@ -366,8 +375,8 @@ Tum ayarlar ortam degiskeni ile gecilebilir (`__` ic ice bolum ayraci):
 
 | Degisken | Aciklama |
 |---|---|
-| `Dokploy__BaseUrl` | **Ilk kurulum baglantisi**: Dokploy koku, `/api` olmadan. Ayni sunucuda: `http://dokploy:3000`. Acilista "Varsayilan" baglanti olarak ice aktarilir; sonrasi panelden yonetilir |
-| `Dokploy__ApiKey` | Ilk baglantinin anahtari ([diyalogun tum alanlari](#dokploy-api-anahtari-generate-api-key)) |
+| `Dokploy__BaseUrl` | *(istege bagli)* **Ilk kurulum baglantisi**: Dokploy koku, `/api` olmadan. Ayni sunucuda: `http://dokploy:3000`. Acilista "Varsayilan" baglanti olarak ice aktarilir; sonrasi panelden yonetilir. Bos birakilabilir — baglantiyi Baglantilar ekranindan ekleyin |
+| `Dokploy__ApiKey` | *(istege bagli)* Ilk baglantinin anahtari ([diyalogun tum alanlari](#dokploy-api-anahtari-generate-api-key)). `BaseUrl` verildiyse bu da zorunludur (yalnizca biri verilirse acilista hata) |
 | `Dokploy__ForceLegacyDiscovery` | `true` ise merkezi endpoint hic denenmez (baglanti bazinda da ayarlanabilir) |
 | `Dokploy__AllowInvalidCertificates` | Self-signed sertifika icin (baglanti bazinda da ayarlanabilir) |
 | `Auth__AdminEmail` | Ilk yonetici e-postasi (varsayilan `admin@trimango.local`) |

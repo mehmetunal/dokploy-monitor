@@ -7,6 +7,11 @@ namespace DokployMonitor.Infrastructure.Dokploy;
 /// <summary>
 /// `Dokploy` bolumunun dogrulamasi. Hatali baglanti ayariyla acilan bir konteyner
 /// saatlerce bos pano gosterebildigi icin bu kontroller acilista yapilir.
+///
+/// Bolum **tamamen bos** olabilir: baglantilar artik veritabaninda tutuluyor ve
+/// panelin Baglantilar ekranindan yonetiliyor (bkz. ConnectionService). Bu yuzden
+/// BaseUrl/ApiKey yalnizca **digeri verilmisse** zorunludur — yarim yapilandirma
+/// sessizce yok sayilmak yerine acilista hata verir.
 /// </summary>
 public sealed class DokployOptionsValidator : AbstractValidator<DokployOptions>
 {
@@ -14,7 +19,8 @@ public sealed class DokployOptionsValidator : AbstractValidator<DokployOptions>
     {
         RuleFor(options => options.BaseUrl)
             .NotEmpty()
-            .WithMessage(_ => text["Required. On the same host the internal address is preferred: http://dokploy:3000"]);
+            .WithMessage(_ => text["Required. On the same host the internal address is preferred: http://dokploy:3000"])
+            .When(options => !string.IsNullOrWhiteSpace(options.ApiKey));
 
         RuleFor(options => options.BaseUrl)
             .Must(BeAbsoluteHttpUrl)
@@ -28,7 +34,8 @@ public sealed class DokployOptionsValidator : AbstractValidator<DokployOptions>
 
         RuleFor(options => options.ApiKey)
             .NotEmpty()
-            .WithMessage(_ => text["Required. Create it with Dokploy > Settings > API Keys > Generate API Key."]);
+            .WithMessage(_ => text["Required. Create it with Dokploy > Settings > API Keys > Generate API Key."])
+            .When(options => !string.IsNullOrWhiteSpace(options.BaseUrl));
 
         RuleFor(options => options.TimeoutSeconds)
             .InclusiveBetween(5, 120)

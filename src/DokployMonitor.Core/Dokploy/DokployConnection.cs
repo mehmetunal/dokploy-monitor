@@ -40,9 +40,15 @@ public class DokployConnection
     /// <summary>Istek gonderilecek kok adres: <c>{BaseUrl}/api/</c></summary>
     public Uri ApiBaseUri() => new($"{BaseUrl.TrimEnd('/')}/api/", UriKind.Absolute);
 
-    /// <summary>Anahtarin ekranda gosterilebilir maskeli hali.</summary>
+    /// <summary>Kayitli bir API anahtari var mi? (Ekranda "kayitli" isareti icin.)</summary>
+    public bool HasApiKey => !string.IsNullOrWhiteSpace(ApiKey);
+
+    /// <summary>
+    /// Anahtarin ekranda gosterilebilir maskeli hali; anahtar yoksa bos doner.
+    /// "Tanimli degil" metnini gorunum yazar, cunku metinler yerelleştirilmelidir.
+    /// </summary>
     public string MaskedApiKey =>
-        string.IsNullOrEmpty(ApiKey)
-            ? "(tanimli degil)"
+        !HasApiKey
+            ? string.Empty
             : ApiKey.Length <= 12 ? "••••" : $"{ApiKey[..8]}…{ApiKey[^4..]}";
 }

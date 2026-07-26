@@ -93,6 +93,9 @@ chown -R 1654:1654 /var/lib/dokploy-monitor/data
 **Environment** sekmesine yapistirin (kendi degerlerinizle):
 
 ```env
+# Dokploy baglantisi: istege bagli. Bu ikisini hic vermeden de kurabilirsiniz;
+# panele girip Baglantilar ekranindan ekleyin (birden fazla sunucu/anahtar da oradan).
+# Verecekseniz IKISINI birlikte verin — yalnizca biri verilirse uygulama acilista hata verir.
 Dokploy__BaseUrl=http://dokploy:3000
 Dokploy__ApiKey=BURAYA_ADIM_1_ANAHTARI
 Webhook__Token=BURAYA_ADIM_2_TOKENI
@@ -214,8 +217,8 @@ yalnizca o token'i icinde tasiyan URL'i Dokploy'a tanitiyorsunuz.
 
 | Kontrol | ✘ ise ne yapmali |
 |---|---|
-| Sunucuya erisim | `Dokploy__BaseUrl` yanlis veya konteyner `dokploy-network`'te degil |
-| API anahtari gecerli | Anahtar hatali/silinmis — yenisini uretin |
+| Sunucuya erisim | Baglantinin adresi yanlis veya konteyner `dokploy-network`'te degil (Baglantilar ekranindan duzeltin) |
+| API anahtari gecerli | Anahtar hatali/silinmis — yenisini uretip Baglantilar ekranindan guncelleyin (kayitli anahtar formda yesil **kayitli** isaretiyle gorunur) |
 | `deployment.allCentralized` | Eski Dokploy surumu; otomatik yedek moda duser, calismaya devam eder |
 | `deployment.queueList` | Eski surum; kuyruk gorunumu kapanir, digerleri calisir |
 

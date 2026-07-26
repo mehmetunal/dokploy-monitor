@@ -160,8 +160,50 @@ public sealed class OptionsValidationTests
             TimeSpan.FromDays(7) + TimeSpan.FromMinutes(1));
     }
 
+    /// <summary>
+    /// Baglantilar veritabaninda tutuldugu icin `Dokploy` bolumu hic verilmeyebilir:
+    /// bu durumda uygulama ayaga kalkar ve baglanti panelden eklenir.
+    /// </summary>
+    [Fact]
+    public void Dokploy_bolumu_tamamen_bos_ise_gecerlidir()
+    {
+        var result = new DokployOptionsValidator(new SourceLanguageLocalizer()).Validate(new DokployOptions());
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Options_boru_hatti_bos_Dokploy_bolumunu_kabul_eder()
+    {
+        using var provider = BuildOptionsPipeline(options =>
+        {
+            options.BaseUrl = string.Empty;
+            options.ApiKey = string.Empty;
+        });
+
+        var options = provider.GetRequiredService<IOptions<DokployOptions>>().Value;
+
+        Assert.Empty(options.BaseUrl);
+        Assert.Empty(options.ApiKey);
+    }
+
     [Fact]
     public void Options_boru_hatti_gecersiz_yapilandirmada_hata_firlatir()
+    {
+        // Yarim/hatali yapilandirma hala acilista patlamali: adres eksik degil, bozuk.
+        using var provider = BuildOptionsPipeline(options =>
+        {
+            options.BaseUrl = "dokploy:3000";
+            options.ApiKey = "dokploy_monitor_abc";
+        });
+
+        var exception = Assert.Throws<OptionsValidationException>(
+            () => provider.GetRequiredService<IOptions<DokployOptions>>().Value);
+
+        Assert.Contains("DokployOptions.BaseUrl", string.Join(" ", exception.Failures));
+    }
+
+    private static ServiceProvider BuildOptionsPipeline(Action<DokployOptions> configure)
     {
         var services = new ServiceCollection();
 
@@ -169,20 +211,10 @@ public sealed class OptionsValidationTests
         services.AddSingleton<IStringLocalizer<SharedResource>, SourceLanguageLocalizer>();
         services.AddValidatorsFromAssemblyContaining<DokployOptionsValidator>(ServiceLifetime.Singleton);
         services.AddOptions<DokployOptions>()
-            .Configure(options =>
-            {
-                options.BaseUrl = string.Empty;
-                options.ApiKey = string.Empty;
-            })
+            .Configure(configure)
             .ValidateWithFluentValidation();
 
-        using var provider = services.BuildServiceProvider();
-
-        var exception = Assert.Throws<OptionsValidationException>(
-            () => provider.GetRequiredService<IOptions<DokployOptions>>().Value);
-
-        Assert.Contains("DokployOptions.BaseUrl", string.Join(" ", exception.Failures));
-        Assert.Contains("DokployOptions.ApiKey", string.Join(" ", exception.Failures));
+        return services.BuildServiceProvider();
     }
 }
 

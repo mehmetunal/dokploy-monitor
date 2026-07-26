@@ -23,15 +23,16 @@ WORKDIR /app
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \
     Logs__MountPath=/app/dokploy-logs \
-    Logs__ArchivePath=/app/data/log-archive
+    Logs__ArchivePath=/app/data/log-archive \
+    DataProtection__KeysPath=/app/data/dataprotection-keys
 
 # ConnectionStrings__Default zorunlu: Dokploy Environment'tan SQL Server baglanti dizesi verin.
 # Ornek: Server=mssql;Database=DokployMonitor;User Id=sa;Password=...;TrustServerCertificate=True
 
 COPY --from=build /app/publish ./
 
-# Log arsivi icin yazilabilir dizin (root olmayan kullanici).
-RUN mkdir -p /app/data /app/dokploy-logs && chown -R $APP_UID:$APP_UID /app/data
+# Log arsivi + DataProtection anahtarlari icin yazilabilir dizin (root olmayan kullanici).
+RUN mkdir -p /app/data/dataprotection-keys /app/dokploy-logs && chown -R $APP_UID:$APP_UID /app/data
 
 USER $APP_UID
 EXPOSE 8080

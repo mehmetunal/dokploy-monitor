@@ -319,3 +319,42 @@ body {
         padding: .55rem .5rem;
     }
 }
+
+/* -------------------------------------------------------- Parola gucu */
+.password-strength-meter {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .35rem;
+    height: .35rem;
+    margin-top: .5rem;
+}
+
+.password-strength-meter [data-strength-bar] {
+    background: var(--bs-border-color);
+    border-radius: .25rem;
+    transition: background-color .15s ease;
+}
+
+.password-strength-meter [data-strength-bar].is-active.password-strength--weak {
+    background: var(--dm-error);
+}
+
+.password-strength-meter [data-strength-bar].is-active.password-strength--medium {
+    background: var(--tm-orange);
+}
+
+.password-strength-meter [data-strength-bar].is-active.password-strength--strong {
+    background: var(--dm-done);
+}
+
+.password-strength-label.password-strength--weak {
+    color: var(--dm-error);
+}
+
+.password-strength-label.password-strength--medium {
+    color: var(--tm-orange);
+}
+
+.password-strength-label.password-strength--strong {
+    color: var(--dm-done);
+}

@@ -141,7 +141,7 @@ Istege bagli:
 | # | Host yolu | Konteyner yolu | Mod | Nicin |
 |---|---|---|---|---|
 | 1 | `/etc/dokploy/logs` | `/app/dokploy-logs` | **read-only** | Build loglarini okumak icin |
-| 2 | `/var/lib/dokploy-monitor/data` | `/app/data` | read-write | Log arsivi (veritabani SQL Server'da) |
+| 2 | `/var/lib/dokploy-monitor/data` | `/app/data` | read-write | Log arsivi + DataProtection anahtarlari (auth/antiforgery) |
 | 3 | `/var/run/docker.sock` | `/var/run/docker.sock` | **read-only** | Container loglari (`docker logs`) icin |
 
 > 3 numarali mount olmazsa uygulama calisir; log goruntuleyicide "Container" sekmesi

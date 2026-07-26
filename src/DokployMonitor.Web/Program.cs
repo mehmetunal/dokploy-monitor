@@ -11,6 +11,7 @@ using DokployMonitor.Web.Workers;
 using FluentMigrator.Runner;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Serilog;
@@ -42,6 +43,19 @@ builder.Services.AddOptions<AuthOptions>()
     .ValidateOnStart();
 
 builder.Services.AddDokployMonitorInfrastructure(builder.Configuration);
+
+// Antiforgery / auth cerezleri: anahtarlar volume'da kalici olmali, yoksa her
+// redeploy'da "The antiforgery token could not be decrypted" hatasi olusur.
+var dataProtectionPath = builder.Configuration["DataProtection:KeysPath"];
+if (string.IsNullOrWhiteSpace(dataProtectionPath))
+{
+    dataProtectionPath = Path.Combine(builder.Environment.ContentRootPath, "data", "dataprotection-keys");
+}
+
+Directory.CreateDirectory(dataProtectionPath);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
+    .SetApplicationName("DokployMonitor");
 
 // --------------------------------------------------------------- Kimlik dogrulama
 var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();

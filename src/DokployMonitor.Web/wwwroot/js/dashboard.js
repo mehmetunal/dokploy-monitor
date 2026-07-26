@@ -8,15 +8,19 @@
     let snapshot = null;
 
     const filterStorageKey = 'dm.dashboard.filter';
+    const pagerSizes = [25, 50, 100, 200];
     const filter = loadFilter();
 
     function loadFilter() {
         try {
-            return Object.assign(
-                { project: '', text: '', onlyFailed: false },
+            const loaded = Object.assign(
+                { project: '', text: '', onlyFailed: false, page: 1, size: 50 },
                 JSON.parse(localStorage.getItem(filterStorageKey) || '{}'));
+            if (!pagerSizes.includes(loaded.size)) loaded.size = 50;
+            loaded.page = Math.max(1, Number(loaded.page) || 1);
+            return loaded;
         } catch (e) {
-            return { project: '', text: '', onlyFailed: false };
+            return { project: '', text: '', onlyFailed: false, page: 1, size: 50 };
         }
     }
 
@@ -26,6 +30,24 @@
         } catch (e) {
             // Ozel modda localStorage yazilamaz; filtre sadece bu sekmede yasar.
         }
+    }
+
+    function pageInfo(totalCount) {
+        const size = pagerSizes.includes(filter.size) ? filter.size : 50;
+        const pageCount = totalCount === 0 ? 1 : Math.ceil(totalCount / size);
+        const page = Math.min(Math.max(1, filter.page || 1), pageCount);
+        const skip = (page - 1) * size;
+        return {
+            page: page,
+            size: size,
+            totalCount: totalCount,
+            pageCount: pageCount,
+            skip: skip,
+            hasPrevious: page > 1,
+            hasNext: page < pageCount,
+            firstRow: totalCount === 0 ? 0 : skip + 1,
+            lastRow: Math.min(skip + size, totalCount),
+        };
     }
 
     function matches(row) {
@@ -189,18 +211,25 @@
 
     function renderRecent(rows) {
         const body = document.getElementById('recent-body');
+        const pager = document.getElementById('recent-pager');
         if (!body) return;
 
         const visible = (rows || []).filter(matches);
+        const paging = pageInfo(visible.length);
+        filter.page = paging.page;
+        filter.size = paging.size;
 
         if (visible.length === 0) {
             body.innerHTML = emptyRow(7, (rows || []).length === 0
                 ? dm.t('No records.')
                 : dm.t('No records match the filter.'));
+            if (pager) pager.innerHTML = '';
             return;
         }
 
-        body.innerHTML = visible.map(function (r) {
+        const pageRows = visible.slice(paging.skip, paging.skip + paging.size);
+
+        body.innerHTML = pageRows.map(function (r) {
             const cssClass = r.status === 'error' || r.status === 'cancelled' ? 'row-failed' : '';
             return '<tr class="' + cssClass + '">' +
                 '<td>' + dm.statusBadge(r.status) + '</td>' +
@@ -212,6 +241,42 @@
                 '<td class="text-end text-nowrap">' + logButton(r) + detailsLink(r.deploymentId) + '</td>' +
                 '</tr>';
         }).join('');
+
+        if (pager) pager.innerHTML = renderPagerHtml(paging);
+    }
+
+    /// Diger liste ekranlarindaki _Pager ile ayni duzen (istemci tarafinda).
+    function renderPagerHtml(paging) {
+        function pageBtn(label, page, enabled, aria) {
+            const disabled = enabled ? '' : ' disabled';
+            return '<button type="button" class="btn btn-outline-secondary' + disabled + '" data-page="' + page + '"' +
+                (aria ? ' aria-label="' + dm.escapeHtml(aria) + '"' : '') + '>' + label + '</button>';
+        }
+
+        function sizeBtn(size) {
+            const active = size === paging.size ? ' active' : '';
+            return '<button type="button" class="btn btn-outline-secondary' + active + '" data-size="' + size + '">' + size + '</button>';
+        }
+
+        return '<div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">' +
+            '<div class="small text-secondary">' +
+                dm.escapeHtml(dm.t('{0}-{1} of {2}', paging.firstRow, paging.lastRow, paging.totalCount)) +
+            '</div>' +
+            '<div class="d-flex gap-2 align-items-center">' +
+                '<div class="btn-group btn-group-sm">' +
+                    pageBtn('«', 1, paging.hasPrevious, dm.t('First page')) +
+                    pageBtn('‹', paging.page - 1, paging.hasPrevious, dm.t('Previous page')) +
+                    '<span class="btn btn-outline-secondary disabled">' +
+                        dm.escapeHtml(dm.t('Page {0} / {1}', paging.page, paging.pageCount)) +
+                    '</span>' +
+                    pageBtn('›', paging.page + 1, paging.hasNext, dm.t('Next page')) +
+                    pageBtn('»', paging.pageCount, paging.hasNext, dm.t('Last page')) +
+                '</div>' +
+                '<div class="btn-group btn-group-sm">' +
+                    pagerSizes.map(sizeBtn).join('') +
+                '</div>' +
+            '</div>' +
+        '</div>';
     }
 
     function renderNotifications(rows) {
@@ -299,37 +364,55 @@
         const text = document.getElementById('filter-text');
         const failed = document.getElementById('filter-failed');
         const clear = document.getElementById('filter-clear');
+        const pager = document.getElementById('recent-pager');
 
         if (text) text.value = filter.text;
         if (failed) failed.checked = filter.onlyFailed;
 
-        function changed() {
+        function changed(resetPage) {
+            if (resetPage) filter.page = 1;
             saveFilter();
             if (snapshot) render(snapshot);
         }
 
         if (project) project.addEventListener('change', function () {
             filter.project = project.value;
-            changed();
+            changed(true);
         });
 
         if (text) text.addEventListener('input', function () {
             filter.text = text.value.trim();
-            changed();
+            changed(true);
         });
 
         if (failed) failed.addEventListener('change', function () {
             filter.onlyFailed = failed.checked;
-            changed();
+            changed(true);
         });
 
         if (clear) clear.addEventListener('click', function () {
             filter.project = '';
             filter.text = '';
             filter.onlyFailed = false;
+            filter.page = 1;
             if (text) text.value = '';
             if (failed) failed.checked = false;
-            changed();
+            changed(true);
+        });
+
+        if (pager) pager.addEventListener('click', function (event) {
+            const button = event.target.closest('button[data-page], button[data-size]');
+            if (!button || button.disabled || button.classList.contains('disabled')) return;
+
+            if (button.hasAttribute('data-size')) {
+                filter.size = Number(button.getAttribute('data-size')) || 50;
+                filter.page = 1;
+            } else {
+                filter.page = Number(button.getAttribute('data-page')) || 1;
+            }
+
+            saveFilter();
+            if (snapshot) render(snapshot);
         });
     }
 

@@ -32,7 +32,8 @@ public sealed class DashboardQueryService(
 
         var recent = await db.Deployments
             .OrderByDescending(d => d.CreatedAt)
-            .Take(_options.RecentCount)
+            // Pano sayfalama (25/50/100/200) icin yeterli kayit; RecentCount alt sinir.
+            .Take(Math.Max(_options.RecentCount, 200))
             .ToListAsync(ct);
 
         var succeeded = await db.Deployments

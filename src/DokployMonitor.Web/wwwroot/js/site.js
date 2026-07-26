@@ -1,10 +1,14 @@
 // Ortak yardimcilar: bicimlendirme, durum rozetleri ve canli gecen-sure sayaclari.
 window.dm = (function () {
     // Ceviriler sunucudan gelir (window.dmI18n); anahtar bulunamazsa Ingilizce kaynak metin.
-    function t(key, arg) {
+    // Ek argumanlar {0}, {1}, ... yer tutucularini doldurur.
+    function t(key) {
         const dict = window.dmI18n || {};
-        const text = dict[key] || key;
-        return arg === undefined ? text : text.replace('{0}', arg);
+        let text = dict[key] || key;
+        for (let i = 1; i < arguments.length; i++) {
+            text = text.replaceAll('{' + (i - 1) + '}', String(arguments[i]));
+        }
+        return text;
     }
 
     const statusMeta = {

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using DokployMonitor.Core.Abstractions;
@@ -145,10 +146,32 @@ public sealed class DockerLogReader(
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
-            var reason = $"Docker soketine baglanilamadi: {ex.Message}";
-            logger.LogWarning(ex, "Container logu okunamadi.");
+            var reason = IsAccessDenied(ex)
+                ? $"Docker soketine izin yok ({_options.SocketPath}). Host'ta soket grubu (or. docker GID) konteynere eklenmeli; gecici: chmod 666 {_options.SocketPath}."
+                : $"Docker soketine baglanilamadi: {ex.Message}";
+
+            // AccessDenied beklenen bir yapilandirma sorunu; stack trace gurultu yaratmasin.
+            logger.LogWarning("Container logu okunamadi: {Reason}", reason);
             return (false, false, Unavailable(reason));
         }
+    }
+
+    private static bool IsAccessDenied(Exception ex)
+    {
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            if (current is SocketException { SocketErrorCode: SocketError.AccessDenied })
+            {
+                return true;
+            }
+
+            if (current.Message.Contains("Permission denied", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static async Task<List<string>> ReadStreamAsync(Stream stream, CancellationToken ct)

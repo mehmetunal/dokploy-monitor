@@ -30,12 +30,15 @@ ENV ASPNETCORE_URLS=http://+:8080 \
 # Ornek: Server=mssql;Database=DokployMonitor;User Id=sa;Password=...;TrustServerCertificate=True
 
 COPY --from=build /app/publish ./
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 
 # Log arsivi + DataProtection anahtarlari icin yazilabilir dizin (root olmayan kullanici).
-RUN mkdir -p /app/data/dataprotection-keys /app/dokploy-logs && chown -R $APP_UID:$APP_UID /app/data
+# Entrypoint root ile baslar (docker.sock grubu), sonra APP_UID'ye duser.
+RUN mkdir -p /app/data/dataprotection-keys /app/dokploy-logs \
+    && chown -R $APP_UID:$APP_UID /app/data \
+    && chmod +x /docker-entrypoint.sh
 
-USER $APP_UID
 EXPOSE 8080
 
 # Saglik ucu: /health (Dokploy veya Traefik buradan kontrol edebilir).
-ENTRYPOINT ["dotnet", "DokployMonitor.Web.dll"]
+ENTRYPOINT ["/docker-entrypoint.sh"]

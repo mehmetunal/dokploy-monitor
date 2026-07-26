@@ -87,6 +87,10 @@
 
 <div class="row g-3">
     <div class="col-lg-8">
+        @{
+            // Build log yoksa container logu ekranin altina kadar uzasin.
+            var fillContainerLog = !Model.Log.Available;
+        }
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>@L["Build Log"]</span>
@@ -125,7 +129,8 @@
                 </div>
             </div>
             <div class="card-body p-2">
-                <div class="log-viewer" id="container-log-viewer" style="height:32vh"></div>
+                <div class="log-viewer @(fillContainerLog ? "log-viewer-fill" : "log-viewer-secondary")"
+                     id="container-log-viewer"></div>
             </div>
         </div>
     </div>

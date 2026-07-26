@@ -221,10 +221,21 @@ body.has-bottom-nav {
     word-break: break-word;
 }
 
-/* Deployment detay: build log viewport altina kadar uzasin (navbar + baslik + kart basligi). */
+/* Deployment detay: birincil log viewport altina kadar (navbar + baslik + kart basligi). */
 .log-viewer-fill {
-    height: calc(100dvh - 12.5rem);
-    min-height: 20rem;
+    height: calc(100dvh - 10.5rem);
+    min-height: 24rem;
+}
+
+/* Build log varken container logu ikincil; yine de rahat okunacak yukseklik. */
+.log-viewer-secondary {
+    height: min(48vh, 28rem);
+    min-height: 16rem;
+}
+
+/* Build log uyarisi ustteyken container fill biraz daha kisa (ust kart + bosluk). */
+#container-log-viewer.log-viewer-fill {
+    height: calc(100dvh - 16.5rem);
 }
 
 .log-line {
@@ -373,8 +384,17 @@ body.has-bottom-nav {
 
     /* Detay sayfasindaki fill log: alt gezinme cubuguna kadar uzasin. */
     .log-viewer-fill {
-        height: calc(100dvh - 11rem - var(--bottom-nav-height, 0px) - env(safe-area-inset-bottom, 0px));
-        min-height: 16rem;
+        height: calc(100dvh - 9.5rem - var(--bottom-nav-height, 0px) - env(safe-area-inset-bottom, 0px));
+        min-height: 18rem;
+    }
+
+    #container-log-viewer.log-viewer-fill {
+        height: calc(100dvh - 15rem - var(--bottom-nav-height, 0px) - env(safe-area-inset-bottom, 0px));
+    }
+
+    .log-viewer-secondary {
+        height: 40vh;
+        min-height: 14rem;
     }
 
     /* Hata metni tabloda tasmasin. */

@@ -147,6 +147,11 @@ Istege bagli:
 > 3 numarali mount olmazsa uygulama calisir; log goruntuleyicide "Container" sekmesi
 > "Docker soketi bulunamadi" der ve build loguna duser. Docker soketi guclu bir yetkidir:
 > yalnizca salt-okunur verin ve panele erisimi kisitli tutun.
+>
+> Soket dosyasi gorunup Engine API "Permission denied" veriyorsa: uygulama uid `1654`
+> ile calisir, host'taki `docker` grubu (or. GID 988) sokete erisir. Image entrypoint
+> soketin GID'sini otomatik ekler — yeniden deploy yeterli. Eski image'da gecici:
+> `chmod 666 /var/run/docker.sock` (daemon restart'ta geri donebilir).
 
 > 1 numarali mount salt-okunur olmali. Monitor'un Dokploy'un loglarini degistirmesi
 > gerekmiyor; boylece yanlislikla silme/bozma riski de kalmiyor.

@@ -137,65 +137,162 @@ public sealed class TranslationStore(
     ///  · satir yoksa eklenir,
     ///  · satir var ama **degeri bossa** (otomatik toplanmis "cevrilmemis" kayit) doldurulur,
     ///  · dolu degerlere **asla dokunulmaz** — panelden yapilan duzenlemeler korunur.
+    ///
+    /// Not: EF Core SQL Server change tracker, kolon CS olsa bile ayni context icinde
+    /// <c>Error</c>/<c>ERROR</c> ciftini cakistirabiliyor. Bu yuzden tohumlama
+    /// case-insensitive tekil anahtar uzerinden ilerler; buyuk/kucuk harf varyantlari
+    /// ayri bir turda (yeni DbContext) eklenir.
     /// </summary>
     public async Task SeedAsync(CancellationToken ct = default)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await using (var db = await dbFactory.CreateDbContextAsync(ct))
+        {
+            var existing = await db.Translations.ToListAsync(ct);
+            // IgnoreCase: ayni context'te Error/ERROR ciftini iki kez Add etme.
+            var index = new Dictionary<(string Culture, string Key), Translation>(
+                StringTupleComparer.OrdinalIgnoreCase);
 
-        var existing = await db.Translations.ToListAsync(ct);
-        // Ordinal: SQL Server'da Key CS collation ile tutulur (Error != ERROR).
-        var index = existing.ToDictionary(
-            row => (row.Culture, row.Key),
+            foreach (var row in existing)
+            {
+                index.TryAdd((row.Culture, row.Key), row);
+            }
+
+            var added = 0;
+            var filled = 0;
+
+            foreach (var (culture, entries) in TranslationDefaults.Seed)
+            {
+                foreach (var (key, value) in entries)
+                {
+                    if (index.TryGetValue((culture, key), out var row))
+                    {
+                        if (!row.IsTranslated && !string.IsNullOrWhiteSpace(value))
+                        {
+                            row.Value = value;
+                            row.UpdatedAt = DateTimeOffset.UtcNow;
+                            filled++;
+                        }
+
+                        continue;
+                    }
+
+                    var entity = new Translation
+                    {
+                        Culture = culture,
+                        Key = key,
+                        Value = value,
+                        UpdatedAt = DateTimeOffset.UtcNow,
+                    };
+
+                    db.Translations.Add(entity);
+                    index[(culture, key)] = entity;
+                    added++;
+                }
+            }
+
+            if (added > 0 || filled > 0)
+            {
+                await db.SaveChangesAsync(ct);
+                logger.LogInformation(
+                    "Ceviri tohumlamasi: {Added} eklendi, {Filled} bos satir dolduruldu.", added, filled);
+            }
+        }
+
+        // CS collation sonrasi atlanan buyuk/kucuk harf varyantlarini dene.
+        await SeedCaseVariantsAsync(ct);
+
+        await ReloadAsync(ct);
+    }
+
+    /// <summary>
+    /// Ilk turda IgnoreCase ile atlanan (Error vs ERROR) satirlari ayri context'te,
+    /// tek tek ekler. Collation CI ise unique ihlali yutulur; CS ise satirlar yazilir.
+    /// </summary>
+    private async Task SeedCaseVariantsAsync(CancellationToken ct)
+    {
+        await using var probe = await dbFactory.CreateDbContextAsync(ct);
+
+        var existing = await probe.Translations
+            .AsNoTracking()
+            .Select(row => new { row.Culture, row.Key })
+            .ToListAsync(ct);
+
+        var presentOrdinal = new HashSet<(string Culture, string Key)>(
+            existing.Select(row => (row.Culture, row.Key)),
             StringTupleComparer.Ordinal);
 
-        var added = 0;
-        var filled = 0;
+        var presentIgnoreCase = new HashSet<(string Culture, string Key)>(
+            existing.Select(row => (row.Culture, row.Key)),
+            StringTupleComparer.OrdinalIgnoreCase);
+
+        var pending = new List<(string Culture, string Key, string? Value)>();
 
         foreach (var (culture, entries) in TranslationDefaults.Seed)
         {
             foreach (var (key, value) in entries)
             {
-                if (index.TryGetValue((culture, key), out var row))
+                // Tam eslesme var → tamam.
+                if (presentOrdinal.Contains((culture, key)))
                 {
-                    // Bos satir tohumla doldurulur; kullanicinin girdigi deger korunur.
-                    if (!row.IsTranslated && !string.IsNullOrWhiteSpace(value))
-                    {
-                        row.Value = value;
-                        row.UpdatedAt = DateTimeOffset.UtcNow;
-                        filled++;
-                    }
-
                     continue;
                 }
 
-                var entity = new Translation
+                // IgnoreCase eslesme yok → birinci turda eklenmeliydi; atla.
+                if (!presentIgnoreCase.Contains((culture, key)))
                 {
-                    Culture = culture,
-                    Key = key,
-                    Value = value,
-                    UpdatedAt = DateTimeOffset.UtcNow,
-                };
+                    continue;
+                }
 
-                db.Translations.Add(entity);
-                index[(culture, key)] = entity;
-                added++;
+                // Ayni metnin farkli harf varyanti (Error varken ERROR).
+                pending.Add((culture, key, value));
             }
         }
 
-        if (added > 0 || filled > 0)
+        if (pending.Count == 0)
         {
-            await db.SaveChangesAsync(ct);
-            logger.LogInformation(
-                "Ceviri tohumlamasi: {Added} eklendi, {Filled} bos satir dolduruldu.", added, filled);
+            return;
         }
 
-        await ReloadAsync(ct);
+        var added = 0;
+
+        foreach (var (culture, key, value) in pending)
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(ct);
+            db.Translations.Add(new Translation
+            {
+                Culture = culture,
+                Key = key,
+                Value = value,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                added++;
+            }
+            catch (DbUpdateException)
+            {
+                // CI collation: unique ihlali beklenen.
+            }
+        }
+
+        if (added > 0)
+        {
+            logger.LogInformation("Ceviri tohumlamasi (harf varyantlari): {Added} eklendi.", added);
+        }
+        else
+        {
+            logger.LogDebug(
+                "Harf duyarli ceviri varyantlari yazilamadi (collation CI olabilir); atlandi.");
+        }
     }
 
     private sealed class StringTupleComparer(StringComparison comparison)
         : IEqualityComparer<(string Culture, string Key)>
     {
         public static StringTupleComparer Ordinal { get; } = new(StringComparison.Ordinal);
+        public static StringTupleComparer OrdinalIgnoreCase { get; } = new(StringComparison.OrdinalIgnoreCase);
 
         public bool Equals((string Culture, string Key) x, (string Culture, string Key) y) =>
             string.Equals(x.Culture, y.Culture, comparison)

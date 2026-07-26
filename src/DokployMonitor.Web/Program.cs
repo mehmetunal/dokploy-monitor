@@ -161,6 +161,7 @@ app.Run();
 /// </summary>
 static async Task InitializeDatabaseAsync(WebApplication app)
 {
+    var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseStartup");
     var connectionString = app.Configuration.GetConnectionString("Default");
     if (string.IsNullOrWhiteSpace(connectionString))
     {
@@ -168,15 +169,38 @@ static async Task InitializeDatabaseAsync(WebApplication app)
             "ConnectionStrings:Default is required. Set ConnectionStrings__Default.");
     }
 
-    await EnsureSqlServerDatabaseExistsAsync(connectionString);
+    var csb = new SqlConnectionStringBuilder(connectionString);
+    logger.LogInformation(
+        "SQL Server'a baglaniliyor: Server={Server}, Database={Database}",
+        csb.DataSource,
+        csb.InitialCatalog);
 
+    try
+    {
+        await EnsureSqlServerDatabaseExistsAsync(connectionString);
+    }
+    catch (Exception ex)
+    {
+        throw new InvalidOperationException(
+            "SQL Server'a baglanilamadi. ConnectionStrings__Default degerini ve ag/erisim ayarlarini kontrol edin "
+            + $"(Server={csb.DataSource}, Database={csb.InitialCatalog}).",
+            ex);
+    }
+
+    logger.LogInformation("FluentMigrator semasi uygulanıyor…");
     await using var scope = app.Services.CreateAsyncScope();
     scope.ServiceProvider.GetRequiredService<IMigrationRunner>().MigrateUp();
+    logger.LogInformation("Veritabani hazir.");
 }
 
 static async Task EnsureSqlServerDatabaseExistsAsync(string connectionString)
 {
     var builder = new SqlConnectionStringBuilder(connectionString);
+    if (builder.ConnectTimeout <= 0 || builder.ConnectTimeout > 30)
+    {
+        builder.ConnectTimeout = 15;
+    }
+
     var databaseName = builder.InitialCatalog;
     if (string.IsNullOrWhiteSpace(databaseName))
     {
@@ -189,6 +213,7 @@ static async Task EnsureSqlServerDatabaseExistsAsync(string connectionString)
     await connection.OpenAsync();
 
     await using var command = connection.CreateCommand();
+    command.CommandTimeout = 30;
     command.CommandText =
         """
         IF DB_ID(@name) IS NULL

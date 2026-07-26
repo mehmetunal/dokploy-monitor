@@ -18,13 +18,31 @@
         DeploymentStatus.Cancelled => "status-cancelled",
         _ => "status-unknown",
     };
+
+    string StatusLabel(DeploymentStatus status) => status switch
+    {
+        DeploymentStatus.Running => L["running"].Value,
+        DeploymentStatus.Done => L["succeeded"].Value,
+        DeploymentStatus.Error => L["ERROR"].Value,
+        DeploymentStatus.Cancelled => L["cancelled"].Value,
+        _ => L["unknown"].Value,
+    };
+
+    string EventTypeLabel(DeploymentEventType type) => type switch
+    {
+        DeploymentEventType.Started => L["Started"].Value,
+        DeploymentEventType.StatusChanged => L["Status changed"].Value,
+        DeploymentEventType.Finished => L["Finished"].Value,
+        DeploymentEventType.WebhookReceived => L["Webhook received"].Value,
+        _ => L["unknown"].Value,
+    };
 }
 
 <div class="d-flex flex-wrap gap-2 justify-content-between align-items-start mb-3">
     <div>
         <h1 class="h4 mb-1">
             @d.DisplayName
-            <span class="status-badge @StatusCss(d.Status) ms-2">@d.Status.ToString().ToLowerInvariant()</span>
+            <span class="status-badge @StatusCss(d.Status) ms-2">@StatusLabel(d.Status)</span>
         </h1>
         <div class="small text-secondary">
             @d.ProjectName @(d.EnvironmentName is null ? "" : "/ " + d.EnvironmentName) · @d.ServiceType
@@ -48,7 +66,7 @@
             {
                 <form asp-action="Redeploy" asp-route-id="@d.DeploymentId" method="post"
                       data-confirm="@L["The service will be redeployed. Are you sure?"]">
-                    <button class="btn btn-sm btn-outline-light" type="submit">@L["Redeploy"]</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">@L["Redeploy"]</button>
                 </form>
 
                 @* Replay: bu eski kayittan ayni servisin deploy'unu tekrarlar.
@@ -177,10 +195,10 @@
                 {
                     <div class="timeline-item">
                         <div class="small">
-                            <strong>@e.EventType</strong>
+                            <strong>@EventTypeLabel(e.EventType)</strong>
                             @if (e.FromStatus is not null)
                             {
-                                <span class="text-secondary">@e.FromStatus → @e.ToStatus</span>
+                                <span class="text-secondary">@StatusLabel(e.FromStatus.Value) → @(e.ToStatus is null ? L["unknown"].Value : StatusLabel(e.ToStatus.Value))</span>
                             }
                         </div>
                         <div class="small text-secondary">@e.OccurredAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</div>
@@ -202,7 +220,7 @@
                     {
                         <li class="list-group-item d-flex justify-content-between align-items-center @(h.DeploymentId == d.DeploymentId ? "bg-body-secondary" : "")">
                             <span>
-                                <span class="status-badge @StatusCss(h.Status)">@h.Status.ToString().ToLowerInvariant()</span>
+                                <span class="status-badge @StatusCss(h.Status)">@StatusLabel(h.Status)</span>
                                 <a class="ms-2 text-decoration-none" asp-action="Details" asp-route-id="@h.DeploymentId">
                                     @h.CreatedAt.ToLocalTime().ToString("dd.MM HH:mm")
                                 </a>
@@ -242,7 +260,7 @@
                         <li class="list-group-item">
                             <div class="d-flex justify-content-between align-items-start">
                                 <span>
-                                    <span class="status-badge @StatusCss(p.Status)">@p.Status.ToString().ToLowerInvariant()</span>
+                                    <span class="status-badge @StatusCss(p.Status)">@StatusLabel(p.Status)</span>
                                     <a class="ms-2 text-decoration-none" asp-action="Details" asp-route-id="@p.DeploymentId">
                                         @p.DisplayName
                                     </a>

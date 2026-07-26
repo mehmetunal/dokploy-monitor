@@ -390,6 +390,10 @@ public static class TranslationDefaults
         "last",
         "seen {0} times",
         "first",
+        "Last sync",
+        "Sync error",
+        "Status changed",
+        "Webhook received",
     ];
 
     /// <summary>Culture code -> values in the same order as <see cref="Keys"/>.</summary>
@@ -771,6 +775,10 @@ public static class TranslationDefaults
             "son",
             "{0} kez goruldu",
             "ilk",
+            "Son senkron",
+            "Senkron hatasi",
+            "Durum degisti",
+            "Webhook alindi",
         ],
         ["de"] =
         [
@@ -1148,6 +1156,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Letzte Synchronisierung",
+            "Synchronisierungsfehler",
+            "Status geandert",
+            "Webhook empfangen",
         ],
         ["fr"] =
         [
@@ -1525,6 +1537,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Derniere synchronisation",
+            "Erreur de synchronisation",
+            "Statut modifie",
+            "Webhook recu",
         ],
         ["es"] =
         [
@@ -1902,6 +1918,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Ultima sincronizacion",
+            "Error de sincronizacion",
+            "Estado cambiado",
+            "Webhook recibido",
         ],
         ["pt"] =
         [
@@ -2279,6 +2299,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Ultima sincronizacao",
+            "Erro de sincronizacao",
+            "Estado alterado",
+            "Webhook recebido",
         ],
         ["it"] =
         [
@@ -2656,6 +2680,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Ultima sincronizzazione",
+            "Errore di sincronizzazione",
+            "Stato cambiato",
+            "Webhook ricevuto",
         ],
         ["nl"] =
         [
@@ -3033,6 +3061,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Laatste synchronisatie",
+            "Synchronisatiefout",
+            "Status gewijzigd",
+            "Webhook ontvangen",
         ],
         ["pl"] =
         [
@@ -3410,6 +3442,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Ostatnia synchronizacja",
+            "Blad synchronizacji",
+            "Zmiana statusu",
+            "Odebrano webhook",
         ],
         ["ru"] =
         [
@@ -3787,6 +3823,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Последняя синхронизация",
+            "Ошибка синхронизации",
+            "Статус изменён",
+            "Webhook получен",
         ],
         ["uk"] =
         [
@@ -4164,6 +4204,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Остання синхронізація",
+            "Помилка синхронізації",
+            "Статус змінено",
+            "Webhook отримано",
         ],
         ["ar"] =
         [
@@ -4541,6 +4585,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "آخر مزامنة",
+            "خطأ في المزامنة",
+            "تغيرت الحالة",
+            "تم استلام Webhook",
         ],
         ["zh"] =
         [
@@ -4918,6 +4966,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "最后同步",
+            "同步错误",
+            "状态已更改",
+            "已收到 Webhook",
         ],
         ["ja"] =
         [
@@ -5295,6 +5347,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "最終同期",
+            "同期エラー",
+            "ステータス変更",
+            "Webhook 受信",
         ],
         ["ko"] =
         [
@@ -5672,6 +5728,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "마지막 동기화",
+            "동기화 오류",
+            "상태 변경",
+            "웹훅 수신",
         ],
         ["hi"] =
         [
@@ -6049,6 +6109,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "अंतिम सिंक",
+            "सिंक त्रुटि",
+            "स्थिति बदली",
+            "वेबहुक प्राप्त",
         ],
         ["id"] =
         [
@@ -6426,6 +6490,10 @@ public static class TranslationDefaults
             "",
             "",
             "",
+            "Sinkronisasi terakhir",
+            "Kesalahan sinkronisasi",
+            "Status berubah",
+            "Webhook diterima",
         ],
     };
 

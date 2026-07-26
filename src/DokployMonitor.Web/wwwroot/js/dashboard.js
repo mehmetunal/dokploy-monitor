@@ -252,7 +252,8 @@
     }
 
     function detailsLink(id) {
-        return '<a class="btn btn-sm btn-outline-light" href="/Deployments/Details/' + encodeURIComponent(id) + '">Detay</a>';
+        return '<a class="btn btn-sm btn-outline-secondary" href="/Deployments/Details/'
+            + encodeURIComponent(id) + '">' + dm.escapeHtml(dm.t('Details')) + '</a>';
     }
 
     /// Log dosyasi olan satirlarda onizleme butonu (bkz. log-preview.js).

@@ -82,7 +82,7 @@
             }
         </div>
         <div class="d-flex gap-2 mt-2">
-            <button class="btn btn-sm btn-outline-light" type="submit">@L["Filter"]</button>
+            <button class="btn btn-sm btn-outline-secondary" type="submit">@L["Filter"]</button>
             <a class="btn btn-sm btn-outline-secondary" asp-action="Index">@L["Clear"]</a>
             
         </div>
@@ -151,7 +151,7 @@
                                 <button type="button" class="btn btn-sm btn-outline-info me-1"
                                         data-log-preview="@d.DeploymentId" data-log-label="@d.DisplayName">@L["Log"]</button>
                             }
-                            <a class="btn btn-sm btn-outline-light" asp-action="Details" asp-route-id="@d.DeploymentId">@L["Details"]</a>
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@d.DeploymentId">@L["Details"]</a>
                         </td>
                     </tr>
                 }

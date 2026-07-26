@@ -69,7 +69,7 @@
                                     <form method="post" asp-action="Test" asp-route-id="@connection.Id" class="d-inline m-0">
                                         <button class="btn btn-sm btn-outline-info" type="submit">@L["Test"]</button>
                                     </form>
-                                    <a class="btn btn-sm btn-outline-light"
+                                    <a class="btn btn-sm btn-outline-secondary"
                                        asp-action="Index" asp-route-edit="@connection.Id">@L["Edit"]</a>
                                     <form method="post" asp-action="Delete" asp-route-id="@connection.Id" class="d-inline m-0"
                                           data-confirm="@L["The connection will be deleted. Collected history is kept. Are you sure?"]">

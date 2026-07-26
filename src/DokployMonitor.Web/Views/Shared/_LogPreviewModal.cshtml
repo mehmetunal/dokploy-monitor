@@ -13,12 +13,12 @@
                 <div class="d-flex gap-2 align-items-center">
                     @* Kaynak: container logu (docker logs) veya Dokploy'un build logu *@
                     <div class="btn-group btn-group-sm" role="group" aria-label="@L["Log source"]">
-                        <button type="button" class="btn btn-outline-light active"
+                        <button type="button" class="btn btn-outline-secondary active"
                                 data-log-source="docker">@L["Container"]</button>
-                        <button type="button" class="btn btn-outline-light"
+                        <button type="button" class="btn btn-outline-secondary"
                                 data-log-source="build">@L["Build"]</button>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-light" id="log-preview-refresh">@L["Refresh"]</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="log-preview-refresh">@L["Refresh"]</button>
                     <a class="btn btn-sm btn-outline-info" id="log-preview-details" href="#">@L["Details"]</a>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@L["Close"]"></button>
                 </div>

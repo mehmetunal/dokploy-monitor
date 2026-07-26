@@ -208,6 +208,156 @@ istiyorsaniz) Redis'i secin; tek konteynerde `Memory` yeterlidir.
 | `/Translations` | Arayuz cevirileri: duzenle, ekle, eksikleri gor (**SuperAdmin**) |
 | `/health` | Saglik ucu (anonim) |
 
+Her ekranin goruntusu asagida: **[Ekran goruntuleri](#ekran-goruntuleri)**.
+
+---
+
+## Ekran goruntuleri
+
+Hepsi **calisan uygulamadan** alindi (Playwright, gelistirme ornegi, gercek Dokploy verisi):
+masaustu **1440×900**, mobil **390×844** (2× yogunluk). Arayuz dili Turkce; ayni ekranlar
+17 dilde calisir — [Ingilizce ornek](#ingilizce-arayuz).
+
+Iki gorselde **ornek veri** var, cunku bu makinede gercek karsiligi olusmuyor:
+
+- **Build logu**: Dokploy'un `/etc/dokploy/logs` klasoru yerelde mount olmadigi icin
+  `src/DokployMonitor.Web/data/dev-logs` altina iki ornek build log dosyasi konuldu
+  (silmek icin `rm -rf src/DokployMonitor.Web/data/dev-logs`). Dokploy uzerinde bu klasor
+  mount edildiginde loglar gercek dosyadan gelir.
+- **Hata imzasi**: Dokploy bu 7 basarisiz deployment icin `errorMessage` dondurmedigi icin
+  imza uretilemiyor; gruplama ekrani ornek bir imza ile gosteriliyor.
+
+### Masaustu (1440×900)
+
+#### Giris
+
+![Giris ekrani](docs/screenshots/desktop/01-login.png)
+
+#### Zorunlu kimlik guncelleme (ilk giris)
+
+Varsayilan `admin@trimango.local` / `Super123!` ile girildiginde bu ekran atlanamaz;
+**ayni e-posta ve ayni parola tekrar yazilarak** devam edilebilir.
+
+![Kimlik guncelleme](docs/screenshots/desktop/19-change-credentials.png)
+
+#### Canli pano — ust (KPI'lar, aktif deploymentlar, kuyruk)
+
+![Canli pano ustu](docs/screenshots/desktop/02-dashboard.png)
+
+#### Canli pano — alt (son deploymentlar, webhook bildirimleri)
+
+![Canli pano alti](docs/screenshots/desktop/02b-dashboard-recent.png)
+
+#### Koyu tema
+
+![Koyu tema](docs/screenshots/desktop/05-dashboard-dark.png)
+
+#### Tema menusu (Sistem / Koyu / Acik)
+
+![Tema menusu](docs/screenshots/desktop/03-theme-menu.png)
+
+#### Dil menusu (bayrakli, 17 dil + sistem dili)
+
+![Dil menusu](docs/screenshots/desktop/04-language-menu.png)
+
+#### Ingilizce arayuz
+
+Ayni pano `en` kulturunde — tum metinler veritabanindaki cevirilerden gelir.
+
+![Ingilizce pano](docs/screenshots/desktop/18-dashboard-english.png)
+
+#### Deployment gecmisi (filtre + sayfalama)
+
+![Deployment gecmisi](docs/screenshots/desktop/06-deployments.png)
+
+#### Gecmis — durum filtresi uygulanmis
+
+![Filtreli gecmis](docs/screenshots/desktop/07-deployments-filtered.png)
+
+#### Log onizleme (liste ekranlarindan, Container / Build secimli)
+
+![Log onizleme](docs/screenshots/desktop/08-log-preview.png)
+
+#### Deployment detayi (build logu, container logu, ozet, olay gecmisi, komsu deploylar)
+
+![Deployment detayi](docs/screenshots/desktop/09-deployment-details.png)
+
+#### Hata analizi (gruplanmis hatalar + son basarisizlar)
+
+![Hata analizi](docs/screenshots/desktop/10-errors.png)
+
+#### Hata imzasi detayi (ayni koku paylasan deploymentlar)
+
+![Hata imzasi](docs/screenshots/desktop/11-error-signature.png)
+
+#### Baglantilar (coklu Dokploy sunucusu / API anahtari — SuperAdmin)
+
+![Baglantilar](docs/screenshots/desktop/12-connections.png)
+
+#### Kullanicilar (SuperAdmin)
+
+![Kullanicilar](docs/screenshots/desktop/13-users.png)
+
+#### Ceviriler (SuperAdmin)
+
+![Ceviriler](docs/screenshots/desktop/14-translations.png)
+
+#### Ceviriler — yalnizca eksikler
+
+![Eksik ceviriler](docs/screenshots/desktop/15-translations-missing.png)
+
+#### Tanilama (baglanti yetenekleri, Docker soketi, webhook URL'i)
+
+![Tanilama](docs/screenshots/desktop/16-diagnostics.png)
+
+#### Yetki reddi (SuperAdmin gerektiren ekranlar)
+
+![Yetki reddi](docs/screenshots/desktop/17-access-denied.png)
+
+### Mobil (390×844)
+
+Ayni ekranlar; navigasyon hamburger menuye toplanir, tablolarda ikincil kolonlar
+(`TIP`, `BASLANGIC`, `HATA` …) gizlenir, filtreler ve KPI kartlari tek kolona akar.
+Gorsellere tiklayarak tam boyutta acabilirsiniz.
+
+<table>
+<tr>
+<td align="center" width="33%"><a href="docs/screenshots/mobile/01-login.png"><img src="docs/screenshots/mobile/01-login.png" width="250" alt="Giris"></a><br><sub><b>Giris</b></sub></td>
+<td align="center" width="33%"><a href="docs/screenshots/mobile/19-change-credentials.png"><img src="docs/screenshots/mobile/19-change-credentials.png" width="250" alt="Kimlik guncelleme"></a><br><sub><b>Zorunlu kimlik guncelleme</b></sub></td>
+<td align="center" width="33%"><a href="docs/screenshots/mobile/02-dashboard.png"><img src="docs/screenshots/mobile/02-dashboard.png" width="250" alt="Canli pano"></a><br><sub><b>Canli pano — ust</b></sub></td>
+</tr>
+<tr>
+<td align="center"><a href="docs/screenshots/mobile/02b-dashboard-recent.png"><img src="docs/screenshots/mobile/02b-dashboard-recent.png" width="250" alt="Son deploymentlar"></a><br><sub><b>Canli pano — son deploymentlar</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/03-mobile-menu.png"><img src="docs/screenshots/mobile/03-mobile-menu.png" width="250" alt="Hamburger menu"></a><br><sub><b>Hamburger menu</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/05-dashboard-dark.png"><img src="docs/screenshots/mobile/05-dashboard-dark.png" width="250" alt="Koyu tema"></a><br><sub><b>Koyu tema</b></sub></td>
+</tr>
+<tr>
+<td align="center"><a href="docs/screenshots/mobile/04-language-menu.png"><img src="docs/screenshots/mobile/04-language-menu.png" width="250" alt="Dil menusu"></a><br><sub><b>Dil menusu (bayrakli)</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/18-dashboard-english.png"><img src="docs/screenshots/mobile/18-dashboard-english.png" width="250" alt="Ingilizce pano"></a><br><sub><b>Ingilizce arayuz</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/06-deployments.png"><img src="docs/screenshots/mobile/06-deployments.png" width="250" alt="Deployment gecmisi"></a><br><sub><b>Deployment gecmisi</b></sub></td>
+</tr>
+<tr>
+<td align="center"><a href="docs/screenshots/mobile/07-deployments-filtered.png"><img src="docs/screenshots/mobile/07-deployments-filtered.png" width="250" alt="Filtreli gecmis"></a><br><sub><b>Gecmis — filtreli</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/08-log-preview.png"><img src="docs/screenshots/mobile/08-log-preview.png" width="250" alt="Log onizleme"></a><br><sub><b>Log onizleme</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/09-deployment-details.png"><img src="docs/screenshots/mobile/09-deployment-details.png" width="250" alt="Deployment detayi"></a><br><sub><b>Deployment detayi</b></sub></td>
+</tr>
+<tr>
+<td align="center"><a href="docs/screenshots/mobile/10-errors.png"><img src="docs/screenshots/mobile/10-errors.png" width="250" alt="Hata analizi"></a><br><sub><b>Hata analizi</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/11-error-signature.png"><img src="docs/screenshots/mobile/11-error-signature.png" width="250" alt="Hata imzasi"></a><br><sub><b>Hata imzasi detayi</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/12-connections.png"><img src="docs/screenshots/mobile/12-connections.png" width="250" alt="Baglantilar"></a><br><sub><b>Baglantilar</b></sub></td>
+</tr>
+<tr>
+<td align="center"><a href="docs/screenshots/mobile/13-users.png"><img src="docs/screenshots/mobile/13-users.png" width="250" alt="Kullanicilar"></a><br><sub><b>Kullanicilar</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/14-translations.png"><img src="docs/screenshots/mobile/14-translations.png" width="250" alt="Ceviriler"></a><br><sub><b>Ceviriler</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/15-translations-missing.png"><img src="docs/screenshots/mobile/15-translations-missing.png" width="250" alt="Eksik ceviriler"></a><br><sub><b>Ceviriler — eksikler</b></sub></td>
+</tr>
+<tr>
+<td align="center"><a href="docs/screenshots/mobile/16-diagnostics.png"><img src="docs/screenshots/mobile/16-diagnostics.png" width="250" alt="Tanilama"></a><br><sub><b>Tanilama</b></sub></td>
+<td align="center"><a href="docs/screenshots/mobile/17-access-denied.png"><img src="docs/screenshots/mobile/17-access-denied.png" width="250" alt="Yetki reddi"></a><br><sub><b>Yetki reddi</b></sub></td>
+<td></td>
+</tr>
+</table>
+
 ---
 
 ## Yapilandirma

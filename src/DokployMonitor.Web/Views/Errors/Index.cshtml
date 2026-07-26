@@ -40,7 +40,7 @@
                 </select>
             </div>
             <div class="col-md-5">
-                <button class="btn btn-sm btn-outline-light" type="submit">@L["Filter"]</button>
+                <button class="btn btn-sm btn-outline-secondary" type="submit">@L["Filter"]</button>
                 <a class="btn btn-sm btn-outline-secondary" asp-action="Index">@L["Clear"]</a>
                 <span class="small text-secondary ms-2">
                     @L["{0} error groups", Model.Signatures.Count] · @L["{0} failed deployments", Model.RecentFailures.Count]

@@ -221,6 +221,12 @@ body.has-bottom-nav {
     word-break: break-word;
 }
 
+/* Deployment detay: build log viewport altina kadar uzasin (navbar + baslik + kart basligi). */
+.log-viewer-fill {
+    height: calc(100dvh - 12.5rem);
+    min-height: 20rem;
+}
+
 .log-line {
     color: #cbd5e1;
 }
@@ -359,10 +365,16 @@ body.has-bottom-nav {
         font-size: 1.35rem;
     }
 
-    /* Log alani ekranin yarisini gecmesin. */
+    /* Log alani ekranin yarisini gecmesin (modal / kisa onizlemeler). */
     .log-viewer {
         height: 45vh;
         font-size: .72rem;
+    }
+
+    /* Detay sayfasindaki fill log: alt gezinme cubuguna kadar uzasin. */
+    .log-viewer-fill {
+        height: calc(100dvh - 11rem - var(--bottom-nav-height, 0px) - env(safe-area-inset-bottom, 0px));
+        min-height: 16rem;
     }
 
     /* Hata metni tabloda tasmasin. */

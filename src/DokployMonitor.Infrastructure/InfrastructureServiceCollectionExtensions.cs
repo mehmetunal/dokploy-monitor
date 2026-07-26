@@ -130,19 +130,24 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<IDokployClientFactory, DokployClientFactory>();
 
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? "Data Source=data/monitor.db";
+        var connectionString = configuration.GetConnectionString("Default");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:Default is required. Set the ConnectionStrings__Default environment variable "
+                + "(SQL Server), e.g. Server=mssql;Database=DokployMonitor;User Id=sa;Password=...;TrustServerCertificate=True");
+        }
 
         // Sema FluentMigrator ile yonetiliyor; EF Core yalnizca sorgu/kayit katmani.
         // Iki taraf ayni tablolari kullandigi icin sema testi zorunlu: bkz. MigrationSchemaTests.
         services.AddFluentMigratorCore()
             .ConfigureRunner(runner => runner
-                .AddSQLite()
+                .AddSqlServer()
                 .WithGlobalConnectionString(connectionString)
                 .ScanIn(typeof(InitialSchema).Assembly).For.Migrations())
             .AddLogging(logging => logging.AddFluentMigratorConsole());
 
-        services.AddDbContextFactory<MonitorDbContext>(options => options.UseSqlite(connectionString));
+        services.AddDbContextFactory<MonitorDbContext>(options => options.UseSqlServer(connectionString));
 
         // Controller/servisler icin scoped DbContext; worker'lar factory'yi dogrudan kullanir.
         services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<MonitorDbContext>>().CreateDbContext());

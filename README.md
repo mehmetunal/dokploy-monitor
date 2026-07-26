@@ -16,7 +16,7 @@ Cevapladigi sorular:
 
 ```
 src/DokployMonitor.Core             Varliklar, sozlesmeler, pano modelleri (bagimsiz)
-src/DokployMonitor.Infrastructure   Dokploy REST istemcisi, EF Core (SQLite), FluentMigrator semasi, log okuyucu
+src/DokployMonitor.Infrastructure   Dokploy REST istemcisi, EF Core (SQL Server), FluentMigrator semasi, log okuyucu
 src/DokployMonitor.Web              MVC ekranlari, SignalR, arka plan servisleri, webhook ucu
 tests/DokployMonitor.Tests          xUnit testleri
 ```
@@ -24,7 +24,7 @@ tests/DokployMonitor.Tests          xUnit testleri
 | Konu | Kullanilan | Nerede |
 |---|---|---|
 | Veritabani semasi | **FluentMigrator** (acilista `MigrateUp`) | `Infrastructure/Persistence/Migrations` |
-| Sorgu / kayit | EF Core (SQLite) | `Infrastructure/Persistence/MonitorDbContext.cs` |
+| Sorgu / kayit | EF Core (SQL Server) | `Infrastructure/Persistence/MonitorDbContext.cs` |
 | Yapilandirma ve istek dogrulama | **FluentValidation** (`ValidateOnStart` ile fail-fast) | `*Validator.cs`, `Infrastructure/Validation` |
 | Giris ve roller | **ASP.NET Core Identity** (cookie) | `Infrastructure/Identity`, `Controllers/AccountController.cs` |
 | Coklu Dokploy sunucusu | Baglanti basina istemci fabrikasi | `Infrastructure/Dokploy/DokployClientFactory.cs` |
@@ -115,7 +115,7 @@ geldigi baglantiyla etiketler.
 > kotasi/rate limit ayarlarken bunu hesaba katin (bkz. asagidaki kota bolumu).
 
 > API anahtarlari veritabaninda duz metin tutulur (kullanici parola hash'leriyle ayni
-> dosyada). SQLite dosyasinin bulundugu volume'u korumali tutun; ekranlarda anahtar
+> veritabaninda). SQL Server erisimini ve yedeklerini korumali tutun; ekranlarda anahtar
 > yalnizca maskeli gosterilir.
 
 ---
@@ -386,7 +386,7 @@ Tum ayarlar ortam degiskeni ile gecilebilir (`__` ic ice bolum ayraci):
 | `Cache__Provider` | `Memory` (varsayilan) veya `Redis` |
 | `Cache__RedisConnectionString` | `Redis` secildiginde zorunlu (or. `redis:6379`) |
 | `Cache__InstanceName` / `Cache__DefaultSeconds` | Redis anahtar oneki ve varsayilan yasam suresi |
-| `ConnectionStrings__Default` | SQLite yolu (varsayilan `/app/data/monitor.db`) |
+| `ConnectionStrings__Default` | SQL Server baglanti dizesi (zorunlu; ortam degiskeninden) |
 | `Monitor__IdlePollSeconds` / `Monitor__ActivePollSeconds` | Polling araliklari (15 / 2) |
 | `Monitor__RetentionDays` | Kayit saklama suresi (90, `0` = sinirsiz) |
 | `Logs__MountPath` / `Logs__HostPath` | Log mount noktasi ve Dokploy'un log koku |
@@ -488,13 +488,14 @@ Ozet:
 2. **Uygulamayi olustur**: Dokploy'da yeni bir Application, kaynak bu repo, build tipi **Dockerfile**.
 3. **Ortam degiskenleri**:
    ```env
+   ConnectionStrings__Default=Server=mssql;Database=DokployMonitor;User Id=sa;Password=...;TrustServerCertificate=True
    Dokploy__BaseUrl=http://dokploy:3000
    Dokploy__ApiKey=<API anahtari>
    Webhook__Token=<openssl rand -hex 32 ciktisi>
    ```
 4. **Mount'lar** (Advanced → Volumes):
    - `/etc/dokploy/logs` → `/app/dokploy-logs` · **read-only** (build loglari icin)
-   - `/var/lib/dokploy-monitor/data` → `/app/data` (SQLite + log arsivi)
+   - `/var/lib/dokploy-monitor/data` → `/app/data` (log arsivi; veritabani SQL Server'da)
 
    Veri klasoru konteynerdeki root olmayan kullaniciya ait olmali:
    ```bash
@@ -592,8 +593,8 @@ uygulama acilirken `MigrateUp` ile uygulanir — ayrica bir CLI adimi yok.
 3. `dotnet test` kosun: `MigrationSchemaTests` FluentMigrator semasini EF modelinin urettigi
    semayla kolon kolon karsilastirir; iki taraf ayrilirsa test kirmizi olur.
 
-> SQLite kisitlari: `ALTER COLUMN` yok, FK'ler `CREATE TABLE` icinde satir ici tanimlanmali.
-> Tarih kolonlari **TEXT** (UTC ISO-8601) olarak tutulur — `AsDateTime()` kullanmayin.
+> SQL Server'da indeksli string kolonlar icin uzunluk siniri koyun (`nvarchar(max)`
+> indekslenemez). Tarih kolonlari `AsDateTimeOffset()` kullanin.
 
 ### Yapilandirma dogrulama (FluentValidation)
 

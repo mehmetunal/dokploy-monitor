@@ -58,9 +58,9 @@ kimlik dogrulamasiz acik kalmaz.
 
 ---
 
-## Adim 3 — Sunucuda veri klasorunu hazirla
+## Adim 3 — Log arsiv klasorunu hazirla
 
-Uygulama SQLite veritabanini ve arsivlenmis build loglarini `/app/data` altinda tutar.
+Uygulama arsivlenmis build loglarini `/app/data` altinda tutar (veritabani SQL Server'dadir).
 Konteyner **root olmayan** kullanici (uid `1654`) ile calistigi icin klasorun sahipligi
 ayarlanmali:
 
@@ -68,9 +68,6 @@ ayarlanmali:
 mkdir -p /var/lib/dokploy-monitor/data
 chown -R 1654:1654 /var/lib/dokploy-monitor/data
 ```
-
-> Bu adim atlanirsa uygulama acilista `SQLite Error 14: unable to open database file`
-> hatasiyla durur.
 
 ---
 
@@ -93,6 +90,9 @@ chown -R 1654:1654 /var/lib/dokploy-monitor/data
 **Environment** sekmesine yapistirin (kendi degerlerinizle):
 
 ```env
+# Zorunlu: SQL Server baglanti dizesi (deploy'lar arasinda veri kalir)
+ConnectionStrings__Default=Server=mssql;Database=DokployMonitor;User Id=sa;Password=BURAYA_SIFRE;TrustServerCertificate=True;Encrypt=True
+
 # Dokploy baglantisi: istege bagli. Bu ikisini hic vermeden de kurabilirsiniz;
 # panele girip Baglantilar ekranindan ekleyin (birden fazla sunucu/anahtar da oradan).
 # Verecekseniz IKISINI birlikte verin — yalnizca biri verilirse uygulama acilista hata verir.
@@ -104,7 +104,6 @@ Webhook__Token=BURAYA_ADIM_2_TOKENI
 Auth__AdminEmail=admin@sirketiniz.com
 Auth__AdminPassword=
 
-ConnectionStrings__Default=Data Source=/app/data/monitor.db
 Logs__MountPath=/app/dokploy-logs
 Logs__HostPath=/etc/dokploy/logs
 
@@ -117,6 +116,10 @@ Cache__Provider=Memory
 # Cache__Provider=Redis
 # Cache__RedisConnectionString=redis:6379
 ```
+
+> `ConnectionStrings__Default` bos birakilirsa uygulama acilista hata verir.
+> Veritabani yoksa uygulama `CREATE DATABASE` dener (sunucu yetkisi gerekir);
+> onceden bos bir DB olusturmaniz da yeterlidir.
 
 > Redis kullanacaksaniz Dokploy'da bir **Redis** servisi olusturup ayni `dokploy-network`
 > agina baglayin; adres olarak servis adini verin (or. `monitor-redis:6379`).
@@ -138,7 +141,7 @@ Istege bagli:
 | # | Host yolu | Konteyner yolu | Mod | Nicin |
 |---|---|---|---|---|
 | 1 | `/etc/dokploy/logs` | `/app/dokploy-logs` | **read-only** | Build loglarini okumak icin |
-| 2 | `/var/lib/dokploy-monitor/data` | `/app/data` | read-write | SQLite (izleme + kullanicilar + baglantilar) + log arsivi |
+| 2 | `/var/lib/dokploy-monitor/data` | `/app/data` | read-write | Log arsivi (veritabani SQL Server'da) |
 | 3 | `/var/run/docker.sock` | `/var/run/docker.sock` | **read-only** | Container loglari (`docker logs`) icin |
 
 > 3 numarali mount olmazsa uygulama calisir; log goruntuleyicide "Container" sekmesi

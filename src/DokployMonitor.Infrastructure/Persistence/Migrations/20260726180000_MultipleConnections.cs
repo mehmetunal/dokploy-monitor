@@ -12,6 +12,8 @@ namespace DokployMonitor.Infrastructure.Persistence.Migrations;
 [Migration(20260726180000, "Coklu Dokploy baglantisi: DokployConnections + Deployments.ConnectionId")]
 public sealed class MultipleConnections : Migration
 {
+    private const int AsMax = int.MaxValue;
+
     public override void Up()
     {
         if (!Schema.Table("DokployConnections").Exists())
@@ -19,16 +21,16 @@ public sealed class MultipleConnections : Migration
             Create.Table("DokployConnections")
                 .WithColumn("Id").AsString(64).NotNullable().PrimaryKey("PK_DokployConnections")
                 .WithColumn("Name").AsString(128).NotNullable()
-                .WithColumn("BaseUrl").AsString().NotNullable()
-                .WithColumn("ApiKey").AsString().NotNullable()
+                .WithColumn("BaseUrl").AsString(AsMax).NotNullable()
+                .WithColumn("ApiKey").AsString(AsMax).NotNullable()
                 .WithColumn("Enabled").AsBoolean().NotNullable()
                 .WithColumn("AllowInvalidCertificates").AsBoolean().NotNullable()
                 .WithColumn("ForceLegacyDiscovery").AsBoolean().NotNullable()
                 .WithColumn("TimeoutSeconds").AsInt32().NotNullable()
                 .WithColumn("MaxParallelRequests").AsInt32().NotNullable()
-                .WithColumn("CreatedAt").AsString().NotNullable()
-                .WithColumn("LastSyncAt").AsString().Nullable()
-                .WithColumn("LastSyncError").AsString().Nullable();
+                .WithColumn("CreatedAt").AsDateTimeOffset().NotNullable()
+                .WithColumn("LastSyncAt").AsDateTimeOffset().Nullable()
+                .WithColumn("LastSyncError").AsString(AsMax).Nullable();
 
             Create.Index("IX_DokployConnections_Name")
                 .OnTable("DokployConnections").OnColumn("Name").Unique();

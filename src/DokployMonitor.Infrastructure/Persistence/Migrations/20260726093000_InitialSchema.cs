@@ -5,9 +5,8 @@ namespace DokployMonitor.Infrastructure.Persistence.Migrations;
 /// <summary>
 /// Ilk sema: deployment kayitlari, olay gecmisi, hata imzalari ve webhook bildirimleri.
 ///
-/// Tum zaman kolonlari TEXT'tir: SQLite'in tarih tipi yok, zamanlari UTC ISO-8601 metin
-/// olarak yaziyoruz (bkz. <see cref="MonitorDbContext"/> UtcIsoConverter). Bu format
-/// hem sozluksel hem kronolojik siralanabildigi icin ORDER BY dogru calisir.
+/// Zaman kolonlari <c>datetimeoffset</c> tipindedir (SQL Server native).
+/// Sinirsiz metin alanlari <c>nvarchar(max)</c> olarak tanimlanir (<see cref="AsMax"/>).
 ///
 /// Kolon ve indeks adlari EF Core'un urettigi semayla birebir aynidir: sorgu katmani
 /// hala EF Core oldugu icin isimlendirme sozlesmesinden sapmamak gerekiyor.
@@ -15,6 +14,9 @@ namespace DokployMonitor.Infrastructure.Persistence.Migrations;
 [Migration(20260726093000, "Ilk sema: deployment, olay, hata imzasi ve webhook tablolari")]
 public sealed class InitialSchema : Migration
 {
+    /// <summary>FluentMigrator'da nvarchar(max) karsiligi.</summary>
+    private const int AsMax = int.MaxValue;
+
     public override void Up()
     {
         // Sema EF Core migration'lari ile olusturulmus bir veritabaninda zaten var olabilir.
@@ -36,67 +38,66 @@ public sealed class InitialSchema : Migration
         Create.Table("Deployments")
             .WithColumn("DeploymentId").AsString(64).NotNullable().PrimaryKey("PK_Deployments")
             .WithColumn("Status").AsString(16).NotNullable()
-            .WithColumn("Title").AsString().Nullable()
-            .WithColumn("Description").AsString().Nullable()
-            .WithColumn("ErrorMessage").AsString().Nullable()
-            .WithColumn("LogPath").AsString().Nullable()
-            .WithColumn("Pid").AsString().Nullable()
-            .WithColumn("ApplicationId").AsString().Nullable()
-            .WithColumn("ComposeId").AsString().Nullable()
-            .WithColumn("ServerId").AsString().Nullable()
-            .WithColumn("ScheduleId").AsString().Nullable()
-            .WithColumn("BackupId").AsString().Nullable()
-            .WithColumn("VolumeBackupId").AsString().Nullable()
-            .WithColumn("PreviewDeploymentId").AsString().Nullable()
+            .WithColumn("Title").AsString(AsMax).Nullable()
+            .WithColumn("Description").AsString(AsMax).Nullable()
+            .WithColumn("ErrorMessage").AsString(AsMax).Nullable()
+            .WithColumn("LogPath").AsString(AsMax).Nullable()
+            .WithColumn("Pid").AsString(AsMax).Nullable()
+            .WithColumn("ApplicationId").AsString(AsMax).Nullable()
+            .WithColumn("ComposeId").AsString(AsMax).Nullable()
+            .WithColumn("ServerId").AsString(AsMax).Nullable()
+            .WithColumn("ScheduleId").AsString(AsMax).Nullable()
+            .WithColumn("BackupId").AsString(AsMax).Nullable()
+            .WithColumn("VolumeBackupId").AsString(AsMax).Nullable()
+            .WithColumn("PreviewDeploymentId").AsString(AsMax).Nullable()
             .WithColumn("IsPreviewDeployment").AsBoolean().NotNullable()
             .WithColumn("ServiceType").AsString(32).NotNullable()
-            .WithColumn("ServiceId").AsString().Nullable()
-            .WithColumn("ServiceName").AsString().Nullable()
-            .WithColumn("AppName").AsString().Nullable()
-            .WithColumn("ProjectId").AsString().Nullable()
-            .WithColumn("ProjectName").AsString().Nullable()
-            .WithColumn("EnvironmentId").AsString().Nullable()
-            .WithColumn("EnvironmentName").AsString().Nullable()
-            .WithColumn("ServerName").AsString().Nullable()
-            .WithColumn("BuildServerName").AsString().Nullable()
-            .WithColumn("CreatedAt").AsString().NotNullable()
-            .WithColumn("StartedAt").AsString().Nullable()
-            .WithColumn("FinishedAt").AsString().Nullable()
+            .WithColumn("ServiceId").AsString(128).Nullable()
+            .WithColumn("ServiceName").AsString(AsMax).Nullable()
+            .WithColumn("AppName").AsString(AsMax).Nullable()
+            .WithColumn("ProjectId").AsString(128).Nullable()
+            .WithColumn("ProjectName").AsString(AsMax).Nullable()
+            .WithColumn("EnvironmentId").AsString(AsMax).Nullable()
+            .WithColumn("EnvironmentName").AsString(AsMax).Nullable()
+            .WithColumn("ServerName").AsString(AsMax).Nullable()
+            .WithColumn("BuildServerName").AsString(AsMax).Nullable()
+            .WithColumn("CreatedAt").AsDateTimeOffset().NotNullable()
+            .WithColumn("StartedAt").AsDateTimeOffset().Nullable()
+            .WithColumn("FinishedAt").AsDateTimeOffset().Nullable()
             .WithColumn("DurationSeconds").AsInt32().Nullable()
             .WithColumn("ErrorSignatureHash").AsString(32).Nullable()
-            .WithColumn("FirstSeenAt").AsString().NotNullable()
-            .WithColumn("LastUpdatedAt").AsString().NotNullable()
-            .WithColumn("ArchivedLogPath").AsString().Nullable()
-            .WithColumn("RawJson").AsString().Nullable();
+            .WithColumn("FirstSeenAt").AsDateTimeOffset().NotNullable()
+            .WithColumn("LastUpdatedAt").AsDateTimeOffset().NotNullable()
+            .WithColumn("ArchivedLogPath").AsString(AsMax).Nullable()
+            .WithColumn("RawJson").AsString(AsMax).Nullable();
 
         Create.Table("ErrorSignatures")
             .WithColumn("Hash").AsString(32).NotNullable().PrimaryKey("PK_ErrorSignatures")
-            .WithColumn("NormalizedMessage").AsString().NotNullable()
-            .WithColumn("SampleMessage").AsString().NotNullable()
+            .WithColumn("NormalizedMessage").AsString(AsMax).NotNullable()
+            .WithColumn("SampleMessage").AsString(AsMax).NotNullable()
             .WithColumn("OccurrenceCount").AsInt32().NotNullable()
-            .WithColumn("FirstSeenAt").AsString().NotNullable()
-            .WithColumn("LastSeenAt").AsString().NotNullable()
-            .WithColumn("LastServiceName").AsString().Nullable();
+            .WithColumn("FirstSeenAt").AsDateTimeOffset().NotNullable()
+            .WithColumn("LastSeenAt").AsDateTimeOffset().NotNullable()
+            .WithColumn("LastServiceName").AsString(AsMax).Nullable();
 
         Create.Table("WebhookNotifications")
             .WithColumn("Id").AsInt64().NotNullable().PrimaryKey("PK_WebhookNotifications").Identity()
-            .WithColumn("ReceivedAt").AsString().NotNullable()
-            .WithColumn("OccurredAt").AsString().Nullable()
-            .WithColumn("Title").AsString().Nullable()
-            .WithColumn("Message").AsString().Nullable()
+            .WithColumn("ReceivedAt").AsDateTimeOffset().NotNullable()
+            .WithColumn("OccurredAt").AsDateTimeOffset().Nullable()
+            .WithColumn("Title").AsString(AsMax).Nullable()
+            .WithColumn("Message").AsString(AsMax).Nullable()
             .WithColumn("Status").AsString(32).Nullable()
             .WithColumn("Type").AsString(32).Nullable()
-            .WithColumn("ProjectName").AsString().Nullable()
-            .WithColumn("ApplicationName").AsString().Nullable()
-            .WithColumn("ApplicationType").AsString().Nullable()
-            .WithColumn("ErrorMessage").AsString().Nullable()
-            .WithColumn("BuildLink").AsString().Nullable()
-            .WithColumn("Domains").AsString().Nullable()
-            .WithColumn("ServiceId").AsString().Nullable()
-            .WithColumn("ProjectId").AsString().Nullable()
-            .WithColumn("RawJson").AsString().Nullable();
+            .WithColumn("ProjectName").AsString(AsMax).Nullable()
+            .WithColumn("ApplicationName").AsString(AsMax).Nullable()
+            .WithColumn("ApplicationType").AsString(AsMax).Nullable()
+            .WithColumn("ErrorMessage").AsString(AsMax).Nullable()
+            .WithColumn("BuildLink").AsString(AsMax).Nullable()
+            .WithColumn("Domains").AsString(AsMax).Nullable()
+            .WithColumn("ServiceId").AsString(AsMax).Nullable()
+            .WithColumn("ProjectId").AsString(AsMax).Nullable()
+            .WithColumn("RawJson").AsString(AsMax).Nullable();
 
-        // FK satir ici tanimlanmali: SQLite ALTER TABLE ADD CONSTRAINT desteklemiyor.
         // Cascade sart: RetentionWorker deployment'lari ExecuteDelete ile (EF change tracker'i
         // devre disi kalacak sekilde) siliyor, olay kayitlarini veritabani temizliyor.
         Create.Table("DeploymentEvents")
@@ -108,8 +109,8 @@ public sealed class InitialSchema : Migration
             .WithColumn("Source").AsString(16).NotNullable()
             .WithColumn("FromStatus").AsString(16).Nullable()
             .WithColumn("ToStatus").AsString(16).Nullable()
-            .WithColumn("Message").AsString().Nullable()
-            .WithColumn("OccurredAt").AsString().NotNullable();
+            .WithColumn("Message").AsString(AsMax).Nullable()
+            .WithColumn("OccurredAt").AsDateTimeOffset().NotNullable();
 
         Create.Index("IX_Deployments_CreatedAt").OnTable("Deployments").OnColumn("CreatedAt");
         Create.Index("IX_Deployments_Status").OnTable("Deployments").OnColumn("Status");

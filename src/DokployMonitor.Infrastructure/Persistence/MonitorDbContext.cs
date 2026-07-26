@@ -1,4 +1,3 @@
-using System.Globalization;
 using DokployMonitor.Core.Deployments;
 using DokployMonitor.Core.Dokploy;
 using DokployMonitor.Core.Localization;
@@ -6,12 +5,11 @@ using DokployMonitor.Core.Notifications;
 using DokployMonitor.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace DokployMonitor.Infrastructure.Persistence;
 
 /// <summary>
-/// Izleme verisi + panel kullanicilari (ASP.NET Core Identity) ayni SQLite dosyasinda.
+/// Izleme verisi + panel kullanicilari (ASP.NET Core Identity) ayni SQL Server veritabaninda.
 /// Sema FluentMigrator ile yonetilir; buradaki eslemeler yalnizca sorgu tarafi icindir.
 /// </summary>
 public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
@@ -23,14 +21,6 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
     public DbSet<DeploymentEvent> DeploymentEvents => Set<DeploymentEvent>();
     public DbSet<ErrorSignature> ErrorSignatures => Set<ErrorSignature>();
     public DbSet<WebhookNotification> WebhookNotifications => Set<WebhookNotification>();
-
-    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-    {
-        // SQLite'in native tarih tipi yok. Tum zamanlari UTC ISO-8601 metin olarak yaziyoruz:
-        // bu format hem sozluksel hem kronolojik olarak siralanabilir, dolayisiyla
-        // ORDER BY / karsilastirma sorgulari dogru calisir.
-        configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcIsoConverter>();
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -64,6 +54,9 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
             entity.Property(d => d.ServiceType).HasMaxLength(32);
             entity.Property(d => d.Status).HasConversion<string>().HasMaxLength(16);
             entity.Property(d => d.ErrorSignatureHash).HasMaxLength(32);
+            // Indeksli kolonlar nvarchar(max) olamaz (SQL Server 900 bayt limiti).
+            entity.Property(d => d.ServiceId).HasMaxLength(128);
+            entity.Property(d => d.ProjectId).HasMaxLength(128);
 
             entity.HasIndex(d => d.CreatedAt);
             entity.HasIndex(d => d.Status);
@@ -102,12 +95,5 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
             entity.Property(n => n.Type).HasMaxLength(32);
             entity.HasIndex(n => n.ReceivedAt);
         });
-    }
-
-    private sealed class UtcIsoConverter() : ValueConverter<DateTimeOffset, string>(
-        value => value.ToUniversalTime().ToString(Format, CultureInfo.InvariantCulture),
-        text => DateTimeOffset.ParseExact(text, Format, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal))
-    {
-        private const string Format = "yyyy-MM-ddTHH:mm:ss.fffffffZ";
     }
 }

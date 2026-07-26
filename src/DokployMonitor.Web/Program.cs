@@ -12,8 +12,7 @@ using FluentMigrator.Runner;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -156,25 +155,48 @@ app.MapHealthChecks("/health").AllowAnonymous();
 app.Run();
 
 /// <summary>
-/// Veritabanini hazirlar: klasoru olusturur, FluentMigrator ile semayi uygular ve
-/// SQLite'i WAL moduna alir. WAL sayesinde arka plan senkronizasyonu yazarken pano
-/// okumaya devam edebilir.
+/// Veritabanini hazirlar: hedef SQL Server veritabani yoksa olusturur, ardindan
+/// FluentMigrator ile semayi uygular. Baglanti dizesi <c>ConnectionStrings__Default</c>
+/// ortam degiskeninden (veya appsettings) okunur.
 /// </summary>
 static async Task InitializeDatabaseAsync(WebApplication app)
 {
-    var connectionString = app.Configuration.GetConnectionString("Default") ?? "Data Source=data/monitor.db";
-    var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
-
-    // FluentMigrator kendi baglantisini acar; dosyanin klasoru onceden var olmali.
-    if (Path.GetDirectoryName(Path.GetFullPath(dataSource)) is { Length: > 0 } directory)
+    var connectionString = app.Configuration.GetConnectionString("Default");
+    if (string.IsNullOrWhiteSpace(connectionString))
     {
-        Directory.CreateDirectory(directory);
+        throw new InvalidOperationException(
+            "ConnectionStrings:Default is required. Set ConnectionStrings__Default.");
     }
 
+    await EnsureSqlServerDatabaseExistsAsync(connectionString);
+
     await using var scope = app.Services.CreateAsyncScope();
-
     scope.ServiceProvider.GetRequiredService<IMigrationRunner>().MigrateUp();
+}
 
-    var db = scope.ServiceProvider.GetRequiredService<MonitorDbContext>();
-    await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+static async Task EnsureSqlServerDatabaseExistsAsync(string connectionString)
+{
+    var builder = new SqlConnectionStringBuilder(connectionString);
+    var databaseName = builder.InitialCatalog;
+    if (string.IsNullOrWhiteSpace(databaseName))
+    {
+        return;
+    }
+
+    builder.InitialCatalog = "master";
+
+    await using var connection = new SqlConnection(builder.ConnectionString);
+    await connection.OpenAsync();
+
+    await using var command = connection.CreateCommand();
+    command.CommandText =
+        """
+        IF DB_ID(@name) IS NULL
+        BEGIN
+            DECLARE @sql nvarchar(max) = N'CREATE DATABASE ' + QUOTENAME(@name);
+            EXEC(@sql);
+        END
+        """;
+    command.Parameters.AddWithValue("@name", databaseName);
+    await command.ExecuteNonQueryAsync();
 }

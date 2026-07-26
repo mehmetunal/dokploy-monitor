@@ -30,7 +30,7 @@ public sealed class DeploymentSyncService(
     IStringLocalizer<SharedResource> text,
     ILogger<DeploymentSyncService> logger)
 {
-    /// <summary>SQLite parametre sinirina takilmamak icin IN sorgularini parcala.</summary>
+    /// <summary>Buyuk IN listelerini parcalar; sorgu planini ve paket boyutunu sinirli tutar.</summary>
     private const int LookupChunkSize = 400;
 
     private readonly Web.Options.MonitorOptions _options = monitorOptions.Value;

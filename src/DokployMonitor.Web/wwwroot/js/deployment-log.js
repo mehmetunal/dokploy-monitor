@@ -34,7 +34,10 @@
     if (statusEl) statusEl.textContent = dm.t('live stream…');
 
     const connection = new signalR.HubConnectionBuilder()
-        .withUrl('/hubs/deployments')
+        .withUrl('/hubs/deployments', {
+            transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
+            withCredentials: true
+        })
         .withAutomaticReconnect()
         .build();
 

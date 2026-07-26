@@ -420,17 +420,40 @@
         wireFilterControls();
         render(window.__initialSnapshot);
 
+        // SSE Traefik arkasinda sik kirilir; WS dener, olmazsa LongPolling (cerez auth uyumlu).
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl('/hubs/deployments')
+            .withUrl('/hubs/deployments', {
+                transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
+                withCredentials: true
+            })
             .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
             .build();
+
+        let authFailed = false;
+
+        function isAuthError(error) {
+            const text = error && (error.message || String(error)) || '';
+            return text.indexOf('401') !== -1 || text.indexOf('Unauthorized') !== -1;
+        }
+
+        function failToPolling(error) {
+            if (isAuthError(error)) {
+                authFailed = true;
+                connection.stop();
+            }
+            startPolling();
+        }
 
         connection.on('dashboard', function (snapshot) {
             stopPolling();
             render(snapshot);
         });
 
-        connection.onreconnecting(function () {
+        connection.onreconnecting(function (error) {
+            if (isAuthError(error)) {
+                failToPolling(error);
+                return;
+            }
             dm.setConnectionStatus(dm.t('reconnecting…'), 'text-bg-warning');
         });
 
@@ -446,6 +469,6 @@
 
         connection.start()
             .then(function () { dm.setConnectionStatus(dm.t('live'), 'text-bg-success'); })
-            .catch(function () { startPolling(); });
+            .catch(failToPolling);
     });
 })();

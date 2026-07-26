@@ -12,6 +12,7 @@ using FluentMigrator.Runner;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Serilog;
@@ -74,6 +75,14 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddClaimsPrincipalFactory<MonitorClaimsPrincipalFactory>()
     .AddDefaultTokenProviders();
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    // Traefik TLS'i sonlandirir; cerez Secure bayragi ve Scheme icin X-Forwarded-* gerekli.
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
@@ -83,7 +92,32 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
     options.Cookie.Name = "trimango-dokploy-monitor.auth";
     options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
+    // SignalR negotiate/WebSocket: HTML login yonlendirmesi yerine 401 (otomatik reconnect
+    // ve istemci hata ayiklamasi icin).
+    options.Events.OnRedirectToLogin = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/hubs"))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/hubs"))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
 });
 
 // Tum uc noktalar varsayilan olarak giris ister; istisnalar [AllowAnonymous] ile isaretli.
@@ -136,6 +170,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 // Not: HTTPS yonlendirmesi bilerek yok — TLS'i Dokploy'un onundeki Traefik sonlandiriyor.
+app.UseForwardedHeaders();
 app.UseSerilogRequestLogging(options =>
 {
     // Pano birkac saniyede bir veri cekebiliyor; log gurultusunu azalt.

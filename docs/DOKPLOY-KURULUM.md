@@ -251,7 +251,8 @@ Ayni sayfada log mount'unun durumu ve kopyalanabilir webhook URL'i de gosterilir
 | Webhook gelmiyor | URL'deki token ile `Webhook__Token` ayni mi; Dokploy'da event'ler isaretli mi |
 | Webhook 401 donuyor | Token uyusmuyor |
 | Webhook 404 donuyor | `Webhook__Token` bos — uc kapali |
-| "yedek mod (polling)" rozeti | SignalR WebSocket'i Traefik'te engelleniyor; uygulama calisir, guncelleme 5 sn'de bir olur |
+| "yedek mod (polling)" rozeti | SignalR baglantisi kurulamadi; uygulama 5 sn'de bir HTTP polling yapar. Once sayfayi yenileyip tekrar giris yapin (oturum/DataProtection). WebSocket icin asagidaki nota bakin |
+| SignalR `WebSocket failed` / `negotiate 401` | (1) `/app/data` mount'u yoksa her redeploy oturumu bozar — Adim 6. (2) Traefik WebSocket'i dusuruyorsa istemci LongPolling'e duser; yine de 401 ise cikis yapip tekrar girin. (3) Birden fazla replica varsa sticky session gerekir (tek ornekte gerekmez) |
 
 ---
 

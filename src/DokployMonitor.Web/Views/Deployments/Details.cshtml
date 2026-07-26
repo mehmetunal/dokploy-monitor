@@ -97,7 +97,7 @@
 
         @* Container logu = calisan uygulamanin stdout/stderr cikisi (docker logs karsiligi).
            Build logundan farklidir; Engine API'sinden istege bagli olarak cekilir. *@
-        <div class="card mt-3">
+        <div class="card mt-3" id="container-log-card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>@L["Container Log"]<span class="small text-secondary">(docker logs @(d.AppName ?? d.ServiceName))</span>
                 </span>

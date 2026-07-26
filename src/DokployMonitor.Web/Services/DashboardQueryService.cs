@@ -1,3 +1,4 @@
+using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Core.Dashboard;
 using DokployMonitor.Core.Deployments;
 using DokployMonitor.Infrastructure.Caching;

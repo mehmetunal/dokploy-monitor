@@ -143,7 +143,10 @@ public sealed class TranslationStore(
         await using var db = await dbFactory.CreateDbContextAsync(ct);
 
         var existing = await db.Translations.ToListAsync(ct);
-        var index = existing.ToDictionary(row => (row.Culture, row.Key));
+        // Ordinal: SQL Server'da Key CS collation ile tutulur (Error != ERROR).
+        var index = existing.ToDictionary(
+            row => (row.Culture, row.Key),
+            StringTupleComparer.Ordinal);
 
         var added = 0;
         var filled = 0;
@@ -165,14 +168,16 @@ public sealed class TranslationStore(
                     continue;
                 }
 
-                db.Translations.Add(new Translation
+                var entity = new Translation
                 {
                     Culture = culture,
                     Key = key,
                     Value = value,
                     UpdatedAt = DateTimeOffset.UtcNow,
-                });
+                };
 
+                db.Translations.Add(entity);
+                index[(culture, key)] = entity;
                 added++;
             }
         }
@@ -185,5 +190,20 @@ public sealed class TranslationStore(
         }
 
         await ReloadAsync(ct);
+    }
+
+    private sealed class StringTupleComparer(StringComparison comparison)
+        : IEqualityComparer<(string Culture, string Key)>
+    {
+        public static StringTupleComparer Ordinal { get; } = new(StringComparison.Ordinal);
+
+        public bool Equals((string Culture, string Key) x, (string Culture, string Key) y) =>
+            string.Equals(x.Culture, y.Culture, comparison)
+            && string.Equals(x.Key, y.Key, comparison);
+
+        public int GetHashCode((string Culture, string Key) obj) =>
+            HashCode.Combine(
+                StringComparer.FromComparison(comparison).GetHashCode(obj.Culture),
+                StringComparer.FromComparison(comparison).GetHashCode(obj.Key));
     }
 }

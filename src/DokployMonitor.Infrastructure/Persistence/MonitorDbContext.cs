@@ -41,7 +41,11 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
             entity.ToTable("Translations");
             entity.HasKey(translation => new { translation.Culture, translation.Key });
             entity.Property(translation => translation.Culture).HasMaxLength(16);
-            entity.Property(translation => translation.Key).HasMaxLength(256);
+            // Kaynak dil anahtarlari buyuk/kucuk harfe duyarlidir (Error vs ERROR).
+            // SQL Server varsayilan collation CI oldugu icin Key CS collation ile tutulur.
+            entity.Property(translation => translation.Key)
+                .HasMaxLength(256)
+                .UseCollation("Latin1_General_100_CS_AS");
             entity.HasIndex(translation => translation.Culture);
         });
 

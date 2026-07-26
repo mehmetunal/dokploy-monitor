@@ -221,7 +221,7 @@ Ayni sayfada log mount'unun durumu ve kopyalanabilir webhook URL'i de gosterilir
 |---|---|
 | Acilista `unable to open database file` | Adim 3'teki `chown 1654:1654` yapilmamis |
 | Acilista `OptionsValidationException` / `DokployOptions.BaseUrl: ...` | Yapilandirma FluentValidation ile acilista dogrulanir; log'daki alan adini duzeltin (or. `BaseUrl`'in sonundaki `/api`'yi silin) |
-| Panele girince surekli "Kimlik Bilgilerini Guncelle" ekrani | Hesap varsayilan parolayla olusturulmus; e-posta **ve** parolayi degistirin (yeni e-posta varsayilandan farkli olmali) |
+| Panele girince "Kimlik Bilgilerini Guncelle" ekrani | Hesap varsayilan parolayla olusturulmus. Yeni bilgiler girin ya da **ayni bilgileri tekrar yazip** onaylayin; onaydan sonra ekran bir daha cikmaz. Bu adimi hic gormemek icin kurulumda `Auth__AdminPassword` verin |
 | "Bu islem icin yetkiniz yok" | Hesap `Viewer` rolunde; Durdur/Yeniden Deploy/Replay ve kullanici-baglanti yonetimi `SuperAdmin` ister |
 | Container logu "Docker soketi bulunamadi" | Adim 6'daki 3. mount eksik |
 | Pano "1/2 baglanti okunamadi" diyor | Baglantilar ekranindan ilgili baglantiyi **Test** edin; adres/anahtar hatali ya da sunucu erisilemez |

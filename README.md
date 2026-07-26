@@ -66,9 +66,15 @@ Parola  : Super123!
 ```
 
 Bu hesapla girildiginde panel **hicbir sayfayi acmaz**; once
-`/Account/ChangeCredentials` ekraninda **e-posta ve parola** degistirilmek zorundadir
-(yeni e-posta varsayilandan farkli olmak zorunda). Parolayi kendiniz belirlemek
-isterseniz `Auth__AdminPassword` verin — o zaman zorunlu degisim istenmez.
+`/Account/ChangeCredentials` ekranindan gecmek **zorunludur**. Bu ekranda:
+
+- yeni bir e-posta/parola belirleyebilirsiniz, **ya da**
+- **ayni bilgileri tekrar yazip** onlarla devam edebilirsiniz (mevcut parolayi dogrulamaniz
+  yeterlidir; onaydan sonra ekran bir daha cikmaz).
+
+Varsayilan parola bu dokumanda yazili oldugu icin panel internete acikken degistirmeniz
+onerilir. Parolayi bastan kendiniz belirlemek isterseniz `Auth__AdminPassword` verin —
+o zaman onay adimi hic istenmez.
 
 | Rol | Yetki |
 |---|---|

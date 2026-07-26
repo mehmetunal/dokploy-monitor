@@ -130,14 +130,8 @@ public sealed class AccountController(
             ModelState.AddModelError(nameof(input.CurrentPassword), "Mevcut parola hatali.");
         }
 
-        // Zorunlu adimda e-posta da gercekten degismeli: varsayilan hesap kalmasin.
-        if (forced && string.Equals(user.Email, input.NewEmail, StringComparison.OrdinalIgnoreCase))
-        {
-            ModelState.AddModelError(
-                nameof(input.NewEmail),
-                "Varsayilan e-postadan farkli bir adres girmelisiniz.");
-        }
-
+        // Not: ekran zorunlu bir onay adimi; ayni e-posta/parola yeniden girilebilir.
+        // Amac, kullanicinin varsayilan kimlik bilgilerini bilincli olarak onaylamasi.
         if (!ModelState.IsValid)
         {
             return View(input);

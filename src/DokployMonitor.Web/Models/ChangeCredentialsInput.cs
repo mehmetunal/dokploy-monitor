@@ -37,9 +37,7 @@ public sealed class ChangeCredentialsInputValidator : AbstractValidator<ChangeCr
             .Equal(input => input.NewPassword)
             .WithMessage("Parola tekrari ayni olmali.");
 
-        RuleFor(input => input.NewPassword)
-            .NotEqual(input => input.CurrentPassword)
-            .WithMessage("Yeni parola mevcut paroladan farkli olmali.")
-            .When(input => !string.IsNullOrEmpty(input.CurrentPassword));
+        // Bilincli olarak "mevcut paroladan farkli olmali" kurali yok: bu ekran bir onay
+        // adimi, kullanici ayni kimlik bilgileriyle devam etmeyi secebilir.
     }
 }

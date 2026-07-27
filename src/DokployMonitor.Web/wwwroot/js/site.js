@@ -45,32 +45,128 @@ window.dm = (function () {
         return String(line === null || line === undefined ? '' : line).replace(ansiPattern, '');
     }
 
-    // Log satirini kabaca siniflandirir: hata satirlari goz taramasinda one cikmali.
-    function classifyLogLine(line) {
-        const lower = line.toLowerCase();
-        if (lower.includes('error') || lower.includes('failed') || lower.includes('fatal') || lower.includes('hata')) {
-            return 'log-line log-error';
+    // Log satirlarinin seviyesi: her satir rozetlenir (hata / uyari / basarili / bilgi),
+    // renkli sol kenar ve soluk zemin sorunlu satirlari goz taramasiyla bulunur hale getirir.
+    // Sira onemli: buildkit ciktisi "#22 33.99 ... warning CS8602" gibi satirlari once
+    // "bilgi" sanmamak icin hata ve uyari desenleri once denenir.
+    const logLevels = [
+        { level: 'error', pattern: /\berror\s+[A-Z]{2}\d+|\berrors?\b|\berr!|\bfatal\b|\bfailed\b|\bfailure\b|\bexception\b|\bpanic\b|non-zero code|\[ERR\]|❌/i },
+        { level: 'warning', pattern: /\bwarning\s+[A-Z]{2}\d+|\bwarnings?\b|\bwarn\b|\bdeprecated\b|\[WRN\]|⚠/i },
+        { level: 'success', pattern: /successfully|succeeded|\bconverged\b|\bhealthy\b|✓|✅/i }
+    ];
+
+    function logLevel(line) {
+        for (let i = 0; i < logLevels.length; i++) {
+            if (logLevels[i].pattern.test(line)) return logLevels[i].level;
         }
-        if (lower.includes('warn')) return 'log-line log-warn';
-        if (lower.includes('successfully') || lower.includes('success') || lower.includes('done')) {
-            return 'log-line log-success';
-        }
-        return 'log-line';
+        return 'info';
     }
 
-    /// Log satirlarini verilen kaba (element) basar; ANSI temizler, siniflandirir.
+    /// Tek log satiri: seviye rozeti + metin. Metin textContent ile yazilir (HTML kacisi bedava).
+    function buildLogLine(raw) {
+        const text = cleanAnsi(raw);
+        const level = logLevel(text);
+
+        const row = document.createElement('div');
+        row.className = 'log-line log-level-' + level;
+        row.setAttribute('data-log-level', level);
+
+        const badge = document.createElement('span');
+        badge.className = 'log-badge';
+        badge.textContent = t(level);
+
+        const body = document.createElement('span');
+        body.className = 'log-text';
+        body.textContent = text;
+
+        row.appendChild(badge);
+        row.appendChild(body);
+        return row;
+    }
+
+    /// Satirin ham metni (rozet metni haric). Artimlı tazelemede karsilastirma buna gore yapilir.
+    function logLineText(row) {
+        const body = row.querySelector ? row.querySelector('.log-text') : null;
+        return (body || row).textContent;
+    }
+
+    /// Log satirlarini verilen kaba (element) basar; ANSI temizler, seviyelendirir.
     function renderLogLines(container, lines) {
         const fragment = document.createDocumentFragment();
-
-        lines.forEach(function (raw) {
-            const line = cleanAnsi(raw);
-            const div = document.createElement('div');
-            div.className = classifyLogLine(line);
-            div.textContent = line;
-            fragment.appendChild(div);
-        });
-
+        lines.forEach(function (raw) { fragment.appendChild(buildLogLine(raw)); });
         container.appendChild(fragment);
+    }
+
+    /// Sunucunun ilk render'da bastigi duz satirlari ayni rozetli yapiya cevirir.
+    function decorateLogViewer(container) {
+        Array.prototype.forEach.call(container.querySelectorAll('.log-line'), function (el) {
+            if (el.querySelector('.log-text')) return;   // zaten rozetli
+            el.replaceWith(buildLogLine(el.textContent));
+        });
+    }
+
+    /// Kullanici logun sonunu mu izliyor? (Yeni satir gelince kaydirma buna gore yapilir.)
+    function atLogBottom(container, slack) {
+        return container.scrollHeight - container.scrollTop - container.clientHeight <= (slack || 24);
+    }
+
+    /// <summary>
+    /// Gelen satirlarin kacinin zaten ekranda oldugunu bulur: mevcut listenin **sonu** ile
+    /// gelen listenin **basi** ne kadar ortusuyor? Uc, son N satiri dondurdugu icin pencere
+    /// kaydikca bas taraf degisir; bu yuzden salt onek karsilastirmasi yetmez.
+    /// Ortusme yoksa null doner (log dondurulmus/degismis: bastan cizilmeli).
+    /// </summary>
+    function overlapLength(existing, incoming) {
+        const max = Math.min(existing.length, incoming.length);
+
+        for (let k = max; k > 0; k--) {
+            let same = true;
+            for (let i = 0; i < k; i++) {
+                if (existing[existing.length - k + i] !== incoming[i]) {
+                    same = false;
+                    break;
+                }
+            }
+            if (same) return k;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Log kutusunu **bosaltmadan** tazeler: yalnizca yeni satirlar eklenir. Boylece
+    /// periyodik tazelemede icerik "kaybolup gelmez" ve kullanicinin kaydirma konumu korunur
+    /// (sonu izliyorsa asagida tutulur). Ortusme bulunamazsa (rotasyon, kaynak degisimi)
+    /// bastan cizer. Donen deger: { added, redrawn }.
+    /// </summary>
+    function syncLogLines(container, lines) {
+        const incoming = (lines || []).map(cleanAnsi);
+        const rows = container.querySelectorAll('.log-line');
+
+        if (rows.length === 0) {
+            renderLogLines(container, incoming);
+            container.scrollTop = container.scrollHeight;
+            return { added: incoming.length, redrawn: true };
+        }
+
+        const existing = Array.prototype.map.call(rows, logLineText);
+        const stick = atLogBottom(container);
+        const overlap = overlapLength(existing, incoming);
+
+        if (overlap === null) {
+            container.replaceChildren();
+            renderLogLines(container, incoming);
+            container.scrollTop = container.scrollHeight;
+            return { added: incoming.length, redrawn: true };
+        }
+
+        const fresh = incoming.slice(overlap);
+        if (fresh.length > 0) {
+            renderLogLines(container, fresh);
+            if (stick) container.scrollTop = container.scrollHeight;
+        }
+
+        return { added: fresh.length, redrawn: false };
     }
 
     // 95 -> "1d 35sn", 3725 -> "1s 2d"
@@ -132,8 +228,11 @@ window.dm = (function () {
         setConnectionStatus: setConnectionStatus,
         meta: meta,
         cleanAnsi: cleanAnsi,
-        classifyLogLine: classifyLogLine,
+        logLevel: logLevel,
         renderLogLines: renderLogLines,
+        decorateLogViewer: decorateLogViewer,
+        syncLogLines: syncLogLines,
+        atLogBottom: atLogBottom,
         t: t
     };
 })();

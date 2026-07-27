@@ -188,9 +188,40 @@ body.has-bottom-nav {
 }
 
 [data-bs-theme="light"] .log-line { color: #1f2937; }
-[data-bs-theme="light"] .log-line.log-error { color: #b91c1c; }
-[data-bs-theme="light"] .log-line.log-warn { color: #92400e; }
-[data-bs-theme="light"] .log-line.log-success { color: #15803d; }
+
+[data-bs-theme="light"] .log-line .log-badge {
+    background: rgba(100, 116, 139, .14);
+    color: #64748b;
+}
+
+[data-bs-theme="light"] .log-line.log-level-error {
+    background: rgba(185, 28, 28, .07);
+    border-left-color: #dc2626;
+    color: #b91c1c;
+}
+
+[data-bs-theme="light"] .log-line.log-level-error .log-badge {
+    background: rgba(185, 28, 28, .14);
+    color: #b91c1c;
+}
+
+[data-bs-theme="light"] .log-line.log-level-warning {
+    background: rgba(146, 64, 14, .07);
+    border-left-color: #d97706;
+    color: #92400e;
+}
+
+[data-bs-theme="light"] .log-line.log-level-warning .log-badge {
+    background: rgba(146, 64, 14, .14);
+    color: #92400e;
+}
+
+[data-bs-theme="light"] .log-line.log-level-success { color: #15803d; }
+
+[data-bs-theme="light"] .log-line.log-level-success .log-badge {
+    background: rgba(21, 128, 61, .14);
+    color: #15803d;
+}
 
 [data-bs-theme="light"] .brand-suffix {
     color: #475569;
@@ -238,13 +269,66 @@ body.has-bottom-nav {
     height: calc(100dvh - 16.5rem);
 }
 
+/* Satir = seviye rozeti + metin. Rozet sabit genislikte bir kolon oldugu icin metinler
+   hizali akar (uzun satirlar rozetin altina degil, metin kolonuna sarar); renkli sol kenar
+   ve soluk zemin hata/uyari satirlarini one cikarir. Build ve container logu ayni stili paylasir. */
 .log-line {
+    display: grid;
+    grid-template-columns: 4.4rem 1fr;
+    gap: .5rem;
     color: #cbd5e1;
+    border-left: 2px solid transparent;
+    padding: .05rem .35rem;
+    border-radius: .15rem;
 }
 
-.log-line.log-error { color: #fca5a5; }
-.log-line.log-warn { color: #fcd34d; }
-.log-line.log-success { color: #86efac; }
+.log-line .log-badge {
+    justify-self: start;
+    align-self: start;
+    font-size: .62rem;
+    line-height: 1.55;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    padding: 0 .35rem;
+    border-radius: .2rem;
+    background: rgba(148, 163, 184, .16);
+    color: #94a3b8;
+    user-select: none;
+}
+
+.log-line .log-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.log-line.log-level-error {
+    background: rgba(248, 113, 113, .09);
+    border-left-color: #f87171;
+    color: #fca5a5;
+}
+
+.log-line.log-level-error .log-badge {
+    background: rgba(248, 113, 113, .22);
+    color: #fca5a5;
+}
+
+.log-line.log-level-warning {
+    background: rgba(251, 191, 36, .08);
+    border-left-color: #fbbf24;
+    color: #fcd34d;
+}
+
+.log-line.log-level-warning .log-badge {
+    background: rgba(251, 191, 36, .2);
+    color: #fcd34d;
+}
+
+.log-line.log-level-success { color: #86efac; }
+
+.log-line.log-level-success .log-badge {
+    background: rgba(74, 222, 128, .18);
+    color: #86efac;
+}
 
 .timeline-item {
     border-left: 2px solid var(--bs-border-color);
@@ -380,6 +464,18 @@ body.has-bottom-nav {
     .log-viewer {
         height: 45vh;
         font-size: .72rem;
+        padding: .5rem .45rem;
+    }
+
+    /* Telefonda rozet kolonu daralir; metne daha fazla yer kalir. */
+    .log-line {
+        grid-template-columns: 3rem 1fr;
+        gap: .35rem;
+    }
+
+    .log-line .log-badge {
+        font-size: .55rem;
+        padding: 0 .25rem;
     }
 
     /* Detay sayfasindaki fill log: alt gezinme cubuguna kadar uzasin. */

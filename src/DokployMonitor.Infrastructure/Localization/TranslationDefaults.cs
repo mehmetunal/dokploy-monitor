@@ -411,6 +411,9 @@ public static class TranslationDefaults
         "The log folder cannot be read ({0}): {1}. The container runs as a non-root user; make the mounted folder readable for it.",
         "✘ empty — the bind mount is probably missing",
         "{0} service folders",
+        "info",
+        "warning",
+        "success",
     ];
 
     /// <summary>Culture code -> values in the same order as <see cref="Keys"/>.</summary>
@@ -813,6 +816,9 @@ public static class TranslationDefaults
             "Log klasoru okunamiyor ({0}): {1}. Konteyner root olmayan bir kullaniciyla calisiyor; mount edilen klasoru bu kullanici icin okunabilir yapin.",
             "✘ bos — bind mount eksik olabilir",
             "{0} servis klasoru",
+            "bilgi",
+            "uyari",
+            "basarili",
         ],
         ["de"] =
         [
@@ -1211,6 +1217,9 @@ public static class TranslationDefaults
             "Der Log-Ordner kann nicht gelesen werden ({0}): {1}. Der Container lauft als Nicht-Root-Benutzer; machen Sie den gemounteten Ordner fur ihn lesbar.",
             "✘ leer — der Bind-Mount fehlt wahrscheinlich",
             "{0} Service-Ordner",
+            "Info",
+            "Warnung",
+            "Erfolg",
         ],
         ["fr"] =
         [
@@ -1609,6 +1618,9 @@ public static class TranslationDefaults
             "Le dossier de logs est illisible ({0}) : {1}. Le conteneur s'execute avec un utilisateur non root ; rendez le dossier monte lisible pour lui.",
             "✘ vide — le bind mount est probablement absent",
             "{0} dossiers de service",
+            "info",
+            "avert.",
+            "succes",
         ],
         ["es"] =
         [
@@ -2007,6 +2019,9 @@ public static class TranslationDefaults
             "No se puede leer la carpeta de logs ({0}): {1}. El contenedor se ejecuta como usuario no root; haga la carpeta montada legible para el.",
             "✘ vacio — probablemente falta el bind mount",
             "{0} carpetas de servicio",
+            "info",
+            "aviso",
+            "exito",
         ],
         ["pt"] =
         [
@@ -2405,6 +2420,9 @@ public static class TranslationDefaults
             "A pasta de logs nao pode ser lida ({0}): {1}. O container roda como usuario nao root; torne a pasta montada legivel para ele.",
             "✘ vazio — o bind mount provavelmente esta ausente",
             "{0} pastas de servico",
+            "info",
+            "aviso",
+            "sucesso",
         ],
         ["it"] =
         [
@@ -2803,6 +2821,9 @@ public static class TranslationDefaults
             "La cartella dei log non e leggibile ({0}): {1}. Il container gira con un utente non root; rendi la cartella montata leggibile per lui.",
             "✘ vuoto — probabilmente manca il bind mount",
             "{0} cartelle di servizio",
+            "info",
+            "avviso",
+            "successo",
         ],
         ["nl"] =
         [
@@ -3201,6 +3222,9 @@ public static class TranslationDefaults
             "De logmap kan niet gelezen worden ({0}): {1}. De container draait als niet-root gebruiker; maak de gemounte map leesbaar voor hem.",
             "✘ leeg — de bind mount ontbreekt waarschijnlijk",
             "{0} servicemappen",
+            "info",
+            "waarsch.",
+            "gelukt",
         ],
         ["pl"] =
         [
@@ -3599,6 +3623,9 @@ public static class TranslationDefaults
             "Nie mozna odczytac folderu logow ({0}): {1}. Kontener dziala jako uzytkownik nie-root; nadaj mu prawo odczytu do zamontowanego folderu.",
             "✘ pusty — prawdopodobnie brakuje bind mounta",
             "{0} folderow uslug",
+            "info",
+            "ostrzez.",
+            "sukces",
         ],
         ["ru"] =
         [
@@ -3997,6 +4024,9 @@ public static class TranslationDefaults
             "Папку логов не удалось прочитать ({0}): {1}. Контейнер работает не под root; дайте ему право чтения на смонтированную папку.",
             "✘ пусто — вероятно, отсутствует bind mount",
             "{0} папок сервисов",
+            "инфо",
+            "предупр.",
+            "успех",
         ],
         ["uk"] =
         [
@@ -4395,6 +4425,9 @@ public static class TranslationDefaults
             "Не вдалося прочитати теку логів ({0}): {1}. Контейнер працює не від root; надайте йому право читання змонтованої теки.",
             "✘ порожньо — імовірно, немає bind mount",
             "{0} тек сервісів",
+            "інфо",
+            "попередж.",
+            "успіх",
         ],
         ["ar"] =
         [
@@ -4793,6 +4826,9 @@ public static class TranslationDefaults
             "لا يمكن قراءة مجلد السجلات ({0}): {1}. تعمل الحاوية بمستخدم غير root؛ اجعل المجلد المُركّب قابلاً للقراءة له.",
             "✘ فارغ — يبدو أن bind mount غير موجود",
             "{0} مجلد خدمة",
+            "معلومة",
+            "تحذير",
+            "نجاح",
         ],
         ["zh"] =
         [
@@ -5191,6 +5227,9 @@ public static class TranslationDefaults
             "无法读取日志目录（{0}）：{1}。容器以非 root 用户运行；请让挂载目录对该用户可读。",
             "✘ 为空 — 可能缺少绑定挂载",
             "{0} 个服务目录",
+            "信息",
+            "警告",
+            "成功",
         ],
         ["ja"] =
         [
@@ -5589,6 +5628,9 @@ public static class TranslationDefaults
             "ログフォルダーを読み取れません（{0}）: {1}。コンテナーは非 root ユーザーで動作しています。マウントしたフォルダーを読み取り可能にしてください。",
             "✘ 空 — バインドマウントが未設定の可能性",
             "{0} 個のサービスフォルダー",
+            "情報",
+            "警告",
+            "成功",
         ],
         ["ko"] =
         [
@@ -5987,6 +6029,9 @@ public static class TranslationDefaults
             "로그 폴더를 읽을 수 없습니다({0}): {1}. 컨테이너가 root가 아닌 사용자로 실행됩니다. 마운트된 폴더를 읽을 수 있게 하세요.",
             "✘ 비어 있음 — 바인드 마운트가 없는 것 같습니다",
             "서비스 폴더 {0}개",
+            "정보",
+            "경고",
+            "성공",
         ],
         ["hi"] =
         [
@@ -6385,6 +6430,9 @@ public static class TranslationDefaults
             "लॉग फ़ोल्डर पढ़ा नहीं जा सका ({0}): {1}। कंटेनर non-root उपयोगकर्ता से चलता है; माउंट किए फ़ोल्डर को उसके लिए पठनीय बनाएँ।",
             "✘ खाली — बाइंड माउंट संभवतः अनुपस्थित",
             "{0} सेवा फ़ोल्डर",
+            "सूचना",
+            "चेतावनी",
+            "सफल",
         ],
         ["id"] =
         [
@@ -6783,6 +6831,9 @@ public static class TranslationDefaults
             "Folder log tidak dapat dibaca ({0}): {1}. Kontainer berjalan sebagai pengguna non-root; jadikan folder yang dipasang dapat dibaca olehnya.",
             "✘ kosong — bind mount mungkin belum ada",
             "{0} folder layanan",
+            "info",
+            "peringatan",
+            "sukses",
         ],
     };
 

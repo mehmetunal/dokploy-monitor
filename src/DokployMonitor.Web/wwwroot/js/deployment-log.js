@@ -1,5 +1,8 @@
 // Deployment detay ekraninda canli log akisi.
-// Sunucu, log dosyasini SignalR stream'i uzerinden satir satir gonderir.
+// Birincil yol: SignalR stream'i (sunucu log dosyasini satir satir gonderir).
+// Yedek yol: SignalR kurulamaz ya da akis koparsa /deployments/{id}/log ucu her
+// RefreshMs'de yoklanir. Iki yolda da guncelleme artimlidir: kutu bosaltilmaz,
+// yalnizca yeni satirlar eklenir ve kaydirma konumu korunur (dm.syncLogLines).
 (function () {
     const dm = window.dm;
     const config = window.__logStream;
@@ -9,29 +12,85 @@
 
     if (!config || !viewer) return;
 
+    const RefreshMs = 2000;
+
+    let timer = null;
+    let inFlight = false;
+
+    function status(key, cssClass) {
+        if (statusEl) {
+            statusEl.textContent = dm.t(key);
+            statusEl.className = 'small ' + (cssClass || 'text-secondary');
+        }
+    }
+
     function append(lines) {
-        dm.renderLogLines(viewer, lines);
+        dm.syncLogLines(viewer, lines);
 
         if (autoscroll && autoscroll.checked) {
             viewer.scrollTop = viewer.scrollHeight;
         }
     }
 
-    // Sunucudan gelen ilk (statik) satirlari da temizle ve renklendir.
-    Array.prototype.forEach.call(viewer.querySelectorAll('.log-line'), function (el) {
-        const text = dm.cleanAnsi(el.textContent);
-        el.textContent = text;
-        el.className = dm.classifyLogLine(text);
-    });
+    // Sunucudan gelen ilk (statik) satirlar duz metindir: ANSI temizlenir ve
+    // akistan gelenlerle ayni rozetli yapiya cevrilir.
+    dm.decorateLogViewer(viewer);
 
     viewer.scrollTop = viewer.scrollHeight;
 
     if (!config.live) {
-        if (statusEl) statusEl.textContent = dm.t('completed');
+        status('completed');
         return;
     }
 
-    if (statusEl) statusEl.textContent = dm.t('live stream…');
+    // ---------------------------------------------------------------- Yedek: yoklama
+    function stopPolling() {
+        if (timer !== null) {
+            clearInterval(timer);
+            timer = null;
+        }
+    }
+
+    async function poll() {
+        if (inFlight) return;
+        inFlight = true;
+
+        try {
+            const response = await fetch(
+                '/deployments/' + encodeURIComponent(config.deploymentId) + '/log?source=build&tail=400',
+                { headers: { 'Accept': 'application/json' } });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+            if (data.available && data.lines) {
+                append(data.lines);
+            }
+
+            // Deployment bitti: build logu artik degismez.
+            if (data.live === false) {
+                stopPolling();
+                status('completed');
+            }
+        } catch (e) {
+            // Gecici ag hatasi: bir sonraki turda tekrar denenir.
+        } finally {
+            inFlight = false;
+        }
+    }
+
+    function startPolling() {
+        if (timer !== null) return;
+
+        status('fallback mode (polling)', 'text-warning');
+        timer = setInterval(function () {
+            if (!document.hidden) poll();
+        }, RefreshMs);
+        poll();
+    }
+
+    // ---------------------------------------------------------------- Birincil: SignalR
+    status('live stream…');
 
     const connection = new signalR.HubConnectionBuilder()
         .withUrl('/hubs/deployments', {
@@ -48,10 +107,12 @@
 
     connection.onreconnected(function () {
         dm.setConnectionStatus(dm.t('live'), 'text-bg-success');
+        stopPolling();
     });
 
     connection.onclose(function () {
         dm.setConnectionStatus(dm.t('connection closed'), 'text-bg-secondary');
+        startPolling();   // baglanti kapandiysa yoklama devralir
     });
 
     connection.start().then(function () {
@@ -65,14 +126,15 @@
                 }
             },
             complete: function () {
-                if (statusEl) statusEl.textContent = dm.t('stream closed');
+                status('stream closed');
             },
             error: function () {
-                if (statusEl) statusEl.textContent = dm.t('stream interrupted — refresh the page');
+                // Akis koptu ama sayfa acik: yoklamaya gecip guncellemeye devam ederiz.
+                startPolling();
             }
         });
     }).catch(function () {
-        if (statusEl) statusEl.textContent = dm.t('could not start live stream');
         dm.setConnectionStatus(dm.t('could not connect'), 'text-bg-warning');
+        startPolling();
     });
 })();

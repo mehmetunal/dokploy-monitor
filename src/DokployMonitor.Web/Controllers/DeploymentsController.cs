@@ -148,6 +148,11 @@ public sealed class DeploymentsController(
             result.UnavailableReason,
             source = usedSource,
             requestedOffset = offset,
+
+            // Istemci otomatik tazelemeyi buna gore surdurur: deployment bittiyse build
+            // logu artik degismez, bosuna istek atmaya gerek yok (container logu akmaya
+            // devam edebilir, orada yoklama surer).
+            live = deployment.Status.IsActive(),
         });
     }
 

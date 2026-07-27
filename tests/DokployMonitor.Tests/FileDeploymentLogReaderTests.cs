@@ -107,6 +107,39 @@ public sealed class FileDeploymentLogReaderTests : IDisposable
         Assert.False(blank.Available);
     }
 
+    /// <summary>
+    /// "Bulunamadi" mesaji denenen yolu tasimali: mount mu yanlis, dosya baska
+    /// sunucuda mi, yoksa Dokploy mu silmis — ancak yolu gorerek ayirt edilebiliyor.
+    /// </summary>
+    [Fact]
+    public async Task Missing_file_reason_names_the_path_that_was_probed()
+    {
+        var result = await _reader.ReadTailAsync("/etc/dokploy/logs/api/nope.log", maxLines: 10);
+
+        Assert.False(result.Available);
+        Assert.Contains(Path.Combine(_mountPath, "api", "nope.log"), result.UnavailableReason);
+    }
+
+    /// <summary>Mount klasoru hic yoksa mesaj mount'un nasil eklenecegini soylemeli.</summary>
+    [Fact]
+    public async Task Missing_mount_is_reported_with_the_expected_mount_pair()
+    {
+        var reader = new FileDeploymentLogReader(
+            new SourceLanguageLocalizer(),
+            Options.Create(new LogOptions
+            {
+                MountPath = Path.Combine(Path.GetTempPath(), "dm-logs-yok-" + Guid.NewGuid().ToString("N")),
+                HostPath = "/etc/dokploy/logs",
+            }),
+            NullLogger<FileDeploymentLogReader>.Instance);
+
+        var result = await reader.ReadTailAsync("/etc/dokploy/logs/api/build.log", maxLines: 10);
+
+        Assert.False(result.Available);
+        Assert.Contains("/etc/dokploy/logs", result.UnavailableReason);
+        Assert.Contains("not mounted", result.UnavailableReason);
+    }
+
     [Fact]
     public async Task Paths_escaping_the_mount_root_are_rejected()
     {

@@ -74,8 +74,11 @@ window.dm = (function () {
     }
 
     // 95 -> "1d 35sn", 3725 -> "1s 2d"
+    // Gecersiz deger (NaN / sonsuz) "NaNs NaNd" gibi bir cikti uretmesin: tire doner.
+    // NaN tipik olarak ayrıştirilamayan bir tarihten gelir (bkz. data-elapsed-from).
     function formatDuration(totalSeconds) {
         if (totalSeconds === null || totalSeconds === undefined) return '—';
+        if (!Number.isFinite(Number(totalSeconds))) return '—';
         const s = Math.max(0, Math.floor(totalSeconds));
         if (s < 60) return s + 'sn';
         const minutes = Math.floor(s / 60);

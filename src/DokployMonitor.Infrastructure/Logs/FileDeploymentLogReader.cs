@@ -142,8 +142,8 @@ public sealed class FileDeploymentLogReader(
         var mountRoot = Path.GetFullPath(_options.MountPath);
         if (!Directory.Exists(mountRoot))
         {
-            reason = $"Log klasoru mount edilmemis ({_options.MountPath}). " +
-                     "Dokploy'da bu servise /etc/dokploy/logs -> " + _options.MountPath + " (read-only) mount'u ekleyin.";
+            reason = text["The log folder is not mounted ({0}). Add the mount {1} -> {0} (read-only) to this service in Dokploy.",
+                _options.MountPath, _options.HostPath];
             return false;
         }
 
@@ -156,13 +156,18 @@ public sealed class FileDeploymentLogReader(
 
         if (!candidate.StartsWith(mountRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal))
         {
-            reason = "Gecersiz log yolu.";
+            reason = text["Invalid log path."];
             return false;
         }
 
         if (!File.Exists(candidate))
         {
-            reason = text["Build log file not found. Dokploy may have cleaned it up, or the log folder is not mounted."];
+            // Aranan yolu da yazariz: mount yanlis mi, dosya baska sunucuda mi, yoksa
+            // Dokploy silmis mi — bunu ancak denenen yolu gorerek ayirt edebiliyoruz.
+            logger.LogDebug("Build log bulunamadi. Denenen yol: {Candidate} (kayitli: {LogPath})", candidate, logPath);
+
+            reason = text["Build log file not found. Dokploy may have cleaned it up, the deployment may have run on another server, or the log folder is not mounted. Path tried: {0}",
+                candidate];
             return false;
         }
 

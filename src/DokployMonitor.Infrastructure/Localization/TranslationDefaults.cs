@@ -290,8 +290,6 @@ public static class TranslationDefaults
         "Toggle navigation",
         "No log path was recorded for this deployment.",
         "The log file could not be read.",
-        "Build log file not found. Dokploy may have cleaned it up, or the log folder is not mounted.",
-        "The log folder is not mounted ({0}). Add the mount /etc/dokploy/logs -> {0} (read-only) to this service in Dokploy.",
         "Container logs are disabled (Docker:Enabled = false).",
         "The service/container name for this deployment is unknown.",
         "Docker socket not found ({0}). Add the mount /var/run/docker.sock:/var/run/docker.sock:ro to the container.",
@@ -398,6 +396,9 @@ public static class TranslationDefaults
         "saved",
         "not set",
         "Production",
+        "Invalid log path.",
+        "The log folder is not mounted ({0}). Add the mount {1} -> {0} (read-only) to this service in Dokploy.",
+        "Build log file not found. Dokploy may have cleaned it up, the deployment may have run on another server, or the log folder is not mounted. Path tried: {0}",
     ];
 
     /// <summary>Culture code -> values in the same order as <see cref="Keys"/>.</summary>
@@ -679,8 +680,6 @@ public static class TranslationDefaults
             "Menuyu ac/kapat",
             "Bu deployment icin log yolu kayitli degil.",
             "Log dosyasi okunamadi.",
-            "Build log dosyasi bulunamadi. Dokploy temizlemis olabilir ya da log klasoru mount edilmemis.",
-            "Log klasoru mount edilmemis ({0}). Dokploy'da bu servise /etc/dokploy/logs -> {0} (read-only) mount'unu ekleyin.",
             "Container logu kapali (Docker:Enabled = false).",
             "Bu deployment icin servis/container adi bilinmiyor.",
             "Docker soketi bulunamadi ({0}). Konteynere /var/run/docker.sock:/var/run/docker.sock:ro mount'unu ekleyin.",
@@ -787,6 +786,9 @@ public static class TranslationDefaults
             "kayitli",
             "tanimli degil",
             "Uretim",
+            "Gecersiz log yolu.",
+            "Log klasoru mount edilmemis ({0}). Dokploy'da bu servise {1} -> {0} (salt-okunur) mount'unu ekleyin.",
+            "Build log dosyasi bulunamadi. Dokploy temizlemis, deployment baska bir sunucuda kosmus ya da log klasoru mount edilmemis olabilir. Denenen yol: {0}",
         ],
         ["de"] =
         [
@@ -1162,8 +1164,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Letzte Synchronisierung",
             "Synchronisierungsfehler",
             "Status geandert",
@@ -1172,6 +1172,9 @@ public static class TranslationDefaults
             "gespeichert",
             "nicht gesetzt",
             "Produktion",
+            "Ungultiger Logpfad.",
+            "Der Log-Ordner ist nicht gemountet ({0}). Fugen Sie diesem Service in Dokploy den Mount {1} -> {0} (read-only) hinzu.",
+            "Build-Log-Datei nicht gefunden. Dokploy hat sie moglicherweise geloscht, das Deployment lief auf einem anderen Server, oder der Log-Ordner ist nicht gemountet. Versuchter Pfad: {0}",
         ],
         ["fr"] =
         [
@@ -1547,8 +1550,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Derniere synchronisation",
             "Erreur de synchronisation",
             "Statut modifie",
@@ -1557,6 +1558,9 @@ public static class TranslationDefaults
             "enregistre",
             "non defini",
             "Production",
+            "Chemin de log invalide.",
+            "Le dossier de logs n'est pas monte ({0}). Ajoutez le montage {1} -> {0} (lecture seule) a ce service dans Dokploy.",
+            "Fichier de log de build introuvable. Dokploy l'a peut-etre supprime, le deploiement a pu s'executer sur un autre serveur, ou le dossier de logs n'est pas monte. Chemin essaye : {0}",
         ],
         ["es"] =
         [
@@ -1932,8 +1936,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Ultima sincronizacion",
             "Error de sincronizacion",
             "Estado cambiado",
@@ -1942,6 +1944,9 @@ public static class TranslationDefaults
             "guardada",
             "sin definir",
             "Produccion",
+            "Ruta de log no valida.",
+            "La carpeta de logs no esta montada ({0}). Anada el montaje {1} -> {0} (solo lectura) a este servicio en Dokploy.",
+            "No se encontro el archivo de log de build. Dokploy pudo eliminarlo, el despliegue pudo ejecutarse en otro servidor, o la carpeta de logs no esta montada. Ruta probada: {0}",
         ],
         ["pt"] =
         [
@@ -2317,8 +2322,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Ultima sincronizacao",
             "Erro de sincronizacao",
             "Estado alterado",
@@ -2327,6 +2330,9 @@ public static class TranslationDefaults
             "salva",
             "nao definida",
             "Producao",
+            "Caminho de log invalido.",
+            "A pasta de logs nao esta montada ({0}). Adicione o mount {1} -> {0} (somente leitura) a este servico no Dokploy.",
+            "Arquivo de log de build nao encontrado. O Dokploy pode te-lo limpado, o deployment pode ter rodado em outro servidor, ou a pasta de logs nao esta montada. Caminho tentado: {0}",
         ],
         ["it"] =
         [
@@ -2702,8 +2708,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Ultima sincronizzazione",
             "Errore di sincronizzazione",
             "Stato cambiato",
@@ -2712,6 +2716,9 @@ public static class TranslationDefaults
             "salvata",
             "non impostata",
             "Produzione",
+            "Percorso log non valido.",
+            "La cartella dei log non e montata ({0}). Aggiungi il mount {1} -> {0} (sola lettura) a questo servizio in Dokploy.",
+            "File di log della build non trovato. Dokploy potrebbe averlo rimosso, il deployment potrebbe essere stato eseguito su un altro server, o la cartella dei log non e montata. Percorso provato: {0}",
         ],
         ["nl"] =
         [
@@ -3087,8 +3094,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Laatste synchronisatie",
             "Synchronisatiefout",
             "Status gewijzigd",
@@ -3097,6 +3102,9 @@ public static class TranslationDefaults
             "opgeslagen",
             "niet ingesteld",
             "Productie",
+            "Ongeldig logpad.",
+            "De logmap is niet gemount ({0}). Voeg de mount {1} -> {0} (alleen lezen) toe aan deze service in Dokploy.",
+            "Build-logbestand niet gevonden. Dokploy heeft het misschien opgeruimd, de deployment liep mogelijk op een andere server, of de logmap is niet gemount. Geprobeerd pad: {0}",
         ],
         ["pl"] =
         [
@@ -3472,8 +3480,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Ostatnia synchronizacja",
             "Blad synchronizacji",
             "Zmiana statusu",
@@ -3482,6 +3488,9 @@ public static class TranslationDefaults
             "zapisany",
             "nie ustawiono",
             "Produkcja",
+            "Nieprawidlowa sciezka logu.",
+            "Folder logow nie jest zamontowany ({0}). Dodaj montowanie {1} -> {0} (tylko do odczytu) do tej uslugi w Dokploy.",
+            "Nie znaleziono pliku logu budowania. Dokploy mogl go usunac, wdrozenie moglo zostac uruchomione na innym serwerze lub folder logow nie jest zamontowany. Sprawdzona sciezka: {0}",
         ],
         ["ru"] =
         [
@@ -3857,8 +3866,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Последняя синхронизация",
             "Ошибка синхронизации",
             "Статус изменён",
@@ -3867,6 +3874,9 @@ public static class TranslationDefaults
             "сохранён",
             "не задан",
             "Продакшн",
+            "Неверный путь к логу.",
+            "Папка логов не смонтирована ({0}). Добавьте монтирование {1} -> {0} (только чтение) для этого сервиса в Dokploy.",
+            "Файл лога сборки не найден. Возможно, Dokploy его удалил, деплой выполнялся на другом сервере или папка логов не смонтирована. Проверенный путь: {0}",
         ],
         ["uk"] =
         [
@@ -4242,8 +4252,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Остання синхронізація",
             "Помилка синхронізації",
             "Статус змінено",
@@ -4252,6 +4260,9 @@ public static class TranslationDefaults
             "збережено",
             "не задано",
             "Продакшн",
+            "Невірний шлях до логу.",
+            "Теку логів не змонтовано ({0}). Додайте монтування {1} -> {0} (лише читання) для цього сервісу в Dokploy.",
+            "Файл логу збірки не знайдено. Можливо, Dokploy його видалив, деплой виконувався на іншому сервері або теку логів не змонтовано. Перевірений шлях: {0}",
         ],
         ["ar"] =
         [
@@ -4627,8 +4638,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "آخر مزامنة",
             "خطأ في المزامنة",
             "تغيرت الحالة",
@@ -4637,6 +4646,9 @@ public static class TranslationDefaults
             "محفوظ",
             "غير محدد",
             "الإنتاج",
+            "مسار سجل غير صالح.",
+            "مجلد السجلات غير مُركّب ({0}). أضف التركيب {1} -> {0} (للقراءة فقط) لهذه الخدمة في Dokploy.",
+            "لم يتم العثور على ملف سجل البناء. ربما حذفه Dokploy، أو تم تشغيل النشر على خادم آخر، أو أن مجلد السجلات غير مُركّب. المسار المُجرَّب: {0}",
         ],
         ["zh"] =
         [
@@ -5012,8 +5024,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "最后同步",
             "同步错误",
             "状态已更改",
@@ -5022,6 +5032,9 @@ public static class TranslationDefaults
             "已保存",
             "未设置",
             "生产",
+            "日志路径无效。",
+            "日志目录未挂载（{0}）。请在 Dokploy 中为该服务添加挂载 {1} -> {0}（只读）。",
+            "未找到构建日志文件。可能已被 Dokploy 清理、部署运行在另一台服务器上，或日志目录未挂载。尝试的路径：{0}",
         ],
         ["ja"] =
         [
@@ -5397,8 +5410,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "最終同期",
             "同期エラー",
             "ステータス変更",
@@ -5407,6 +5418,9 @@ public static class TranslationDefaults
             "保存済み",
             "未設定",
             "本番",
+            "ログパスが無効です。",
+            "ログフォルダーがマウントされていません（{0}）。Dokploy でこのサービスに {1} -> {0}（読み取り専用）のマウントを追加してください。",
+            "ビルドログファイルが見つかりません。Dokploy が削除した、デプロイが別のサーバーで実行された、またはログフォルダーがマウントされていない可能性があります。試したパス: {0}",
         ],
         ["ko"] =
         [
@@ -5782,8 +5796,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "마지막 동기화",
             "동기화 오류",
             "상태 변경",
@@ -5792,6 +5804,9 @@ public static class TranslationDefaults
             "저장됨",
             "설정되지 않음",
             "프로덕션",
+            "잘못된 로그 경로입니다.",
+            "로그 폴더가 마운트되지 않았습니다({0}). Dokploy에서 이 서비스에 {1} -> {0}(읽기 전용) 마운트를 추가하세요.",
+            "빌드 로그 파일을 찾을 수 없습니다. Dokploy가 정리했거나, 배포가 다른 서버에서 실행되었거나, 로그 폴더가 마운트되지 않았을 수 있습니다. 시도한 경로: {0}",
         ],
         ["hi"] =
         [
@@ -6167,8 +6182,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "अंतिम सिंक",
             "सिंक त्रुटि",
             "स्थिति बदली",
@@ -6177,6 +6190,9 @@ public static class TranslationDefaults
             "सहेजा गया",
             "सेट नहीं",
             "प्रोडक्शन",
+            "अमान्य लॉग पथ।",
+            "लॉग फ़ोल्डर माउंट नहीं है ({0})। Dokploy में इस सेवा के लिए {1} -> {0} (केवल-पढ़ने) माउंट जोड़ें।",
+            "बिल्ड लॉग फ़ाइल नहीं मिली। Dokploy ने हटा दी हो सकती है, डिप्लॉयमेंट दूसरे सर्वर पर चला हो सकता है, या लॉग फ़ोल्डर माउंट नहीं है। आज़माया गया पथ: {0}",
         ],
         ["id"] =
         [
@@ -6552,8 +6568,6 @@ public static class TranslationDefaults
             "",
             "",
             "",
-            "",
-            "",
             "Sinkronisasi terakhir",
             "Kesalahan sinkronisasi",
             "Status berubah",
@@ -6562,6 +6576,9 @@ public static class TranslationDefaults
             "tersimpan",
             "belum diatur",
             "Produksi",
+            "Jalur log tidak valid.",
+            "Folder log belum dipasang ({0}). Tambahkan mount {1} -> {0} (baca-saja) ke layanan ini di Dokploy.",
+            "Berkas log build tidak ditemukan. Mungkin dibersihkan Dokploy, deployment berjalan di server lain, atau folder log belum dipasang. Jalur yang dicoba: {0}",
         ],
     };
 

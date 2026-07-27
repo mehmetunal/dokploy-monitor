@@ -45,70 +45,32 @@ window.dm = (function () {
         return String(line === null || line === undefined ? '' : line).replace(ansiPattern, '');
     }
 
-    // ------------------------------------------------------------------ Log akisi
-    // Her satir bir seviyeyle etiketlenir (Dokploy'un deployment akisi gibi): rozet,
-    // renkli sol kenar ve soluk arka plan sayesinde 1000+ satirlik build logunda
-    // hata/uyari satirlari goz taramasiyla bulunur.
-    //
-    // Sira onemli: buildkit ciktisi "#22 33.99 ... warning CS8602" gibi satirlari
-    // adim onekiyle basladigi icin once "step" sanilabilir; bu yuzden hata ve uyari
-    // desenleri adim deseninden once denenir.
-    const logLevels = [
-        { level: 'error', pattern: /\berror\s+[A-Z]{2}\d+|\berrors?\b|\berr!|\bfatal\b|\bfailed\b|\bfailure\b|\bexception\b|\bpanic\b|non-zero code|\[ERR\]|❌/i },
-        { level: 'warning', pattern: /\bwarning\s+[A-Z]{2}\d+|\bwarnings?\b|\bwarn\b|\bdeprecated\b|\[WRN\]|⚠/i },
-        { level: 'success', pattern: /successfully|succeeded|\bconverged\b|\bhealthy\b|✓|✅/i },
-        { level: 'step', pattern: /^\s*(?:step\s+\d+\s*\/\s*\d+|--->|#\d+\s|\[\d+\/\d+\]|={5,}|-{5,})/i }
-    ];
-
-    function logLevel(line) {
-        for (let i = 0; i < logLevels.length; i++) {
-            if (logLevels[i].pattern.test(line)) return logLevels[i].level;
+    // Log satirini kabaca siniflandirir: hata satirlari goz taramasinda one cikmali.
+    function classifyLogLine(line) {
+        const lower = line.toLowerCase();
+        if (lower.includes('error') || lower.includes('failed') || lower.includes('fatal') || lower.includes('hata')) {
+            return 'log-line log-error';
         }
-        return 'info';
+        if (lower.includes('warn')) return 'log-line log-warn';
+        if (lower.includes('successfully') || lower.includes('success') || lower.includes('done')) {
+            return 'log-line log-success';
+        }
+        return 'log-line';
     }
 
-    /// Tek bir log satiri: rozet + metin. Metin textContent ile yazilir (HTML kacisi bedava).
-    function buildLogLine(raw) {
-        const text = cleanAnsi(raw);
-        const level = logLevel(text);
-
-        const row = document.createElement('div');
-        row.className = 'log-line log-level-' + level;
-        row.setAttribute('data-log-level', level);
-
-        const badge = document.createElement('span');
-        badge.className = 'log-badge';
-        badge.textContent = t(level);
-
-        const body = document.createElement('span');
-        body.className = 'log-text';
-        body.textContent = text;
-
-        row.appendChild(badge);
-        row.appendChild(body);
-        return row;
-    }
-
-    /// Log satirlarini verilen kaba (element) basar; ANSI temizler, seviyelendirir.
+    /// Log satirlarini verilen kaba (element) basar; ANSI temizler, siniflandirir.
     function renderLogLines(container, lines) {
         const fragment = document.createDocumentFragment();
-        lines.forEach(function (raw) { fragment.appendChild(buildLogLine(raw)); });
-        container.appendChild(fragment);
-    }
 
-    /// Sunucunun ilk render'da bastigi duz satirlari ayni rozetli yapiya cevirir.
-    function decorateLogViewer(container) {
-        Array.prototype.forEach.call(container.querySelectorAll('.log-line'), function (el) {
-            if (el.querySelector('.log-text')) return;   // zaten rozetli
-            el.replaceWith(buildLogLine(el.textContent));
+        lines.forEach(function (raw) {
+            const line = cleanAnsi(raw);
+            const div = document.createElement('div');
+            div.className = classifyLogLine(line);
+            div.textContent = line;
+            fragment.appendChild(div);
         });
-    }
 
-    /// Kopyalama icin logun duz metni (rozetler haric).
-    function logText(container) {
-        return Array.prototype.map.call(
-            container.querySelectorAll('.log-line'),
-            function (el) { return (el.querySelector('.log-text') || el).textContent; }).join('\n');
+        container.appendChild(fragment);
     }
 
     // 95 -> "1d 35sn", 3725 -> "1s 2d"
@@ -167,10 +129,8 @@ window.dm = (function () {
         setConnectionStatus: setConnectionStatus,
         meta: meta,
         cleanAnsi: cleanAnsi,
-        logLevel: logLevel,
+        classifyLogLine: classifyLogLine,
         renderLogLines: renderLogLines,
-        decorateLogViewer: decorateLogViewer,
-        logText: logText,
         t: t
     };
 })();
@@ -238,114 +198,8 @@ function wireConfirmForms() {
     });
 }
 
-// ------------------------------------------------------------------- Log araclari
-// Her .log-viewer icin: sunucudan gelen satirlari rozetle, satir sayisini yaz,
-// "yalniz sorunlar" filtresini uygula. Satirlar SignalR/fetch ile sonradan da
-// eklendigi icin kap bir MutationObserver ile izlenir — her render yerine tek yer.
-window.dmLogViewers = (function () {
-    const dm = window.dm;
-
-    function targetOf(el, attribute) {
-        const id = el.getAttribute(attribute);
-        return id ? document.getElementById(id) : null;
-    }
-
-    function toolbarsFor(viewer, attribute) {
-        return document.querySelectorAll('[' + attribute + '="' + viewer.id + '"]');
-    }
-
-    function counts(viewer) {
-        const rows = viewer.querySelectorAll('.log-line');
-        let problems = 0;
-        Array.prototype.forEach.call(rows, function (row) {
-            const level = row.getAttribute('data-log-level');
-            if (level === 'error' || level === 'warning') problems++;
-        });
-        return { total: rows.length, problems: problems };
-    }
-
-    function refresh(viewer) {
-        const stats = counts(viewer);
-
-        toolbarsFor(viewer, 'data-log-count-for').forEach(function (el) {
-            el.textContent = stats.total === 0 ? '' : dm.t('{0} lines', stats.total);
-        });
-
-        // Sorun yoksa filtre kutusu yanlis umut vermesin.
-        toolbarsFor(viewer, 'data-log-filter-for').forEach(function (input) {
-            input.disabled = stats.problems === 0;
-            applyFilter(viewer, input.checked && stats.problems > 0);
-        });
-    }
-
-    function applyFilter(viewer, onlyProblems) {
-        Array.prototype.forEach.call(viewer.querySelectorAll('.log-line'), function (row) {
-            const level = row.getAttribute('data-log-level');
-            const keep = !onlyProblems || level === 'error' || level === 'warning';
-            row.classList.toggle('d-none', !keep);
-        });
-    }
-
-    async function copy(viewer, button) {
-        const text = dm.logText(viewer);
-        if (!text) return;
-
-        try {
-            // Guvenli olmayan baglamda (http + alan adi) Clipboard API yok: gecici alana yaz.
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(text);
-            } else {
-                const area = document.createElement('textarea');
-                area.value = text;
-                area.setAttribute('readonly', '');
-                area.style.position = 'fixed';
-                area.style.opacity = '0';
-                document.body.appendChild(area);
-                area.select();
-                document.execCommand('copy');
-                area.remove();
-            }
-
-            const previous = button.textContent;
-            button.textContent = dm.t('Copied');
-            setTimeout(function () { button.textContent = previous; }, 1500);
-        } catch (e) {
-            button.textContent = dm.t('Copy');
-        }
-    }
-
-    function init() {
-        document.querySelectorAll('.log-viewer').forEach(function (viewer) {
-            dm.decorateLogViewer(viewer);
-            refresh(viewer);
-
-            new MutationObserver(function () { refresh(viewer); })
-                .observe(viewer, { childList: true });
-        });
-
-        document.addEventListener('click', function (event) {
-            const button = event.target.closest('[data-log-copy-for]');
-            if (!button) return;
-
-            const viewer = targetOf(button, 'data-log-copy-for');
-            if (viewer) copy(viewer, button);
-        });
-
-        document.addEventListener('change', function (event) {
-            const input = event.target.closest('[data-log-filter-for]');
-            if (!input) return;
-
-            const viewer = targetOf(input, 'data-log-filter-for');
-            if (viewer) applyFilter(viewer, input.checked);
-        });
-    }
-
-    return { init: init, refresh: refresh };
-})();
-
 document.addEventListener('DOMContentLoaded', function () {
     window.dm.startElapsedTicker();
     window.dmTheme.init();
-    window.dmLogViewers.init();
     wireConfirmForms();
 });

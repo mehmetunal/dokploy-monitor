@@ -17,12 +17,14 @@
         }
     }
 
-    // Sunucudan gelen ilk (statik) satirlari rozetlemeyi site.js (dmLogViewers) yapar;
-    // burada yalnizca en alta kaydiriyoruz. Bu kod DOMContentLoaded'dan once kostugu
-    // icin kaydirma islemini de o ana birakiyoruz.
-    document.addEventListener('DOMContentLoaded', function () {
-        viewer.scrollTop = viewer.scrollHeight;
+    // Sunucudan gelen ilk (statik) satirlari da temizle ve renklendir.
+    Array.prototype.forEach.call(viewer.querySelectorAll('.log-line'), function (el) {
+        const text = dm.cleanAnsi(el.textContent);
+        el.textContent = text;
+        el.className = dm.classifyLogLine(text);
     });
+
+    viewer.scrollTop = viewer.scrollHeight;
 
     if (!config.live) {
         if (statusEl) statusEl.textContent = dm.t('completed');

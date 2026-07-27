@@ -398,14 +398,6 @@ public static class TranslationDefaults
         "saved",
         "not set",
         "Production",
-        "info",
-        "warning",
-        "success",
-        "step",
-        "Copy",
-        "Copied",
-        "{0} lines",
-        "Only problems",
     ];
 
     /// <summary>Culture code -> values in the same order as <see cref="Keys"/>.</summary>
@@ -795,14 +787,6 @@ public static class TranslationDefaults
             "kayitli",
             "tanimli degil",
             "Uretim",
-            "bilgi",
-            "uyari",
-            "basarili",
-            "adim",
-            "Kopyala",
-            "Kopyalandi",
-            "{0} satir",
-            "Yalniz sorunlar",
         ],
         ["de"] =
         [
@@ -1188,14 +1172,6 @@ public static class TranslationDefaults
             "gespeichert",
             "nicht gesetzt",
             "Produktion",
-            "Info",
-            "Warnung",
-            "Erfolg",
-            "Schritt",
-            "Kopieren",
-            "Kopiert",
-            "{0} Zeilen",
-            "Nur Probleme",
         ],
         ["fr"] =
         [
@@ -1581,14 +1557,6 @@ public static class TranslationDefaults
             "enregistre",
             "non defini",
             "Production",
-            "info",
-            "avert.",
-            "succes",
-            "etape",
-            "Copier",
-            "Copie",
-            "{0} lignes",
-            "Problemes seulement",
         ],
         ["es"] =
         [
@@ -1974,14 +1942,6 @@ public static class TranslationDefaults
             "guardada",
             "sin definir",
             "Produccion",
-            "info",
-            "aviso",
-            "exito",
-            "paso",
-            "Copiar",
-            "Copiado",
-            "{0} lineas",
-            "Solo problemas",
         ],
         ["pt"] =
         [
@@ -2367,14 +2327,6 @@ public static class TranslationDefaults
             "salva",
             "nao definida",
             "Producao",
-            "info",
-            "aviso",
-            "sucesso",
-            "passo",
-            "Copiar",
-            "Copiado",
-            "{0} linhas",
-            "Apenas problemas",
         ],
         ["it"] =
         [
@@ -2760,14 +2712,6 @@ public static class TranslationDefaults
             "salvata",
             "non impostata",
             "Produzione",
-            "info",
-            "avviso",
-            "successo",
-            "passo",
-            "Copia",
-            "Copiato",
-            "{0} righe",
-            "Solo problemi",
         ],
         ["nl"] =
         [
@@ -3153,14 +3097,6 @@ public static class TranslationDefaults
             "opgeslagen",
             "niet ingesteld",
             "Productie",
-            "info",
-            "waarsch.",
-            "gelukt",
-            "stap",
-            "Kopieren",
-            "Gekopieerd",
-            "{0} regels",
-            "Alleen problemen",
         ],
         ["pl"] =
         [
@@ -3546,14 +3482,6 @@ public static class TranslationDefaults
             "zapisany",
             "nie ustawiono",
             "Produkcja",
-            "info",
-            "ostrzez.",
-            "sukces",
-            "krok",
-            "Kopiuj",
-            "Skopiowano",
-            "{0} wierszy",
-            "Tylko problemy",
         ],
         ["ru"] =
         [
@@ -3939,14 +3867,6 @@ public static class TranslationDefaults
             "сохранён",
             "не задан",
             "Продакшн",
-            "инфо",
-            "предупр.",
-            "успех",
-            "шаг",
-            "Копировать",
-            "Скопировано",
-            "{0} строк",
-            "Только проблемы",
         ],
         ["uk"] =
         [
@@ -4332,14 +4252,6 @@ public static class TranslationDefaults
             "збережено",
             "не задано",
             "Продакшн",
-            "інфо",
-            "попередж.",
-            "успіх",
-            "крок",
-            "Копіювати",
-            "Скопійовано",
-            "{0} рядків",
-            "Лише проблеми",
         ],
         ["ar"] =
         [
@@ -4725,14 +4637,6 @@ public static class TranslationDefaults
             "محفوظ",
             "غير محدد",
             "الإنتاج",
-            "معلومة",
-            "تحذير",
-            "نجاح",
-            "خطوة",
-            "نسخ",
-            "تم النسخ",
-            "{0} سطر",
-            "المشاكل فقط",
         ],
         ["zh"] =
         [
@@ -5118,14 +5022,6 @@ public static class TranslationDefaults
             "已保存",
             "未设置",
             "生产",
-            "信息",
-            "警告",
-            "成功",
-            "步骤",
-            "复制",
-            "已复制",
-            "{0} 行",
-            "仅问题",
         ],
         ["ja"] =
         [
@@ -5511,14 +5407,6 @@ public static class TranslationDefaults
             "保存済み",
             "未設定",
             "本番",
-            "情報",
-            "警告",
-            "成功",
-            "ステップ",
-            "コピー",
-            "コピーしました",
-            "{0} 行",
-            "問題のみ",
         ],
         ["ko"] =
         [
@@ -5904,14 +5792,6 @@ public static class TranslationDefaults
             "저장됨",
             "설정되지 않음",
             "프로덕션",
-            "정보",
-            "경고",
-            "성공",
-            "단계",
-            "복사",
-            "복사됨",
-            "{0}줄",
-            "문제만",
         ],
         ["hi"] =
         [
@@ -6297,14 +6177,6 @@ public static class TranslationDefaults
             "सहेजा गया",
             "सेट नहीं",
             "प्रोडक्शन",
-            "सूचना",
-            "चेतावनी",
-            "सफल",
-            "चरण",
-            "कॉपी",
-            "कॉपी किया",
-            "{0} पंक्तियाँ",
-            "केवल समस्याएँ",
         ],
         ["id"] =
         [
@@ -6690,14 +6562,6 @@ public static class TranslationDefaults
             "tersimpan",
             "belum diatur",
             "Produksi",
-            "info",
-            "peringatan",
-            "sukses",
-            "langkah",
-            "Salin",
-            "Tersalin",
-            "{0} baris",
-            "Hanya masalah",
         ],
     };
 

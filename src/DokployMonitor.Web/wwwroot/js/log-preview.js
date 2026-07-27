@@ -4,6 +4,9 @@
 // Pencere acikken log **kendiliginden** tazelenir (bkz. RefreshMs): kullanicinin "Yenile"ye
 // basmasi gerekmez. Tazeleme artimlidir — kutu bosaltilmaz, yalnizca yeni satirlar eklenir,
 // kaydirma konumu korunur (bkz. dm.syncLogLines).
+//
+// Varsayilan kaynak "auto": once container, yoksa build (sunucu dusumu). Deploy sirasinda
+// container henuz yokken 404 gecici olabilir — yoklama durmaz, bir sonraki turda tekrar dener.
 (function () {
     const dm = window.dm;
     const modalEl = document.getElementById('log-preview-modal');
@@ -21,19 +24,24 @@
     // Ayni deployment tekrar acilirsa tazeleyebilmek icin son istek hatirlanir.
     let current = null;
 
-    // Kaynak: 'docker' = calisan servisin container logu, 'build' = Dokploy derleme logu.
-    let source = 'docker';
+    // '' = auto (sunucu docker→build dusumu), 'docker' | 'build' = sabit kaynak.
+    let source = '';
+    let lastUsedSource = 'docker';
 
     let timer = null;
     let inFlight = false;
+    let requestSeq = 0;
 
     function sourceLabel(value) {
         return dm.t(value === 'build' ? 'build log' : 'container log (docker)');
     }
 
     function markActiveSource() {
+        const active = source || lastUsedSource;
         modalEl.querySelectorAll('[data-log-source]').forEach(function (button) {
-            button.classList.toggle('active', button.getAttribute('data-log-source') === source);
+            const value = button.getAttribute('data-log-source');
+            // Auto modda sunucunun sectigi kaynagi vurgula.
+            button.classList.toggle('active', value === active);
         });
     }
 
@@ -58,6 +66,10 @@
         const silent = options && options.silent;
         if (silent && inFlight) return;   // yavas yanitta istekler ust uste binmesin
 
+        const requestedId = current.deploymentId;
+        const requestedSource = source;
+        const seq = ++requestSeq;
+
         if (!silent) {
             viewer.replaceChildren();
             statusEl.textContent = dm.t('loading…');
@@ -68,30 +80,58 @@
         inFlight = true;
 
         try {
+            const sourceQuery = requestedSource ? ('&source=' + encodeURIComponent(requestedSource)) : '';
             const response = await fetch(
-                '/deployments/' + encodeURIComponent(current.deploymentId) + '/log?tail=200&source=' + source,
+                '/deployments/' + encodeURIComponent(requestedId) + '/log?tail=200' + sourceQuery,
                 { headers: { 'Accept': 'application/json' } });
 
+            // Kullanici kaynak/deployment degistirdiyse gec kalan yaniti yoksay.
+            if (seq !== requestSeq || !current || current.deploymentId !== requestedId || source !== requestedSource) {
+                return;
+            }
+
             if (!response.ok) {
-                statusEl.textContent = dm.t('could not fetch log') + ' (HTTP ' + response.status + ')';
-                statusEl.className = 'small text-warning';
-                stopTimer();
+                if (!silent) {
+                    statusEl.textContent = dm.t('could not fetch log') + ' (HTTP ' + response.status + ')';
+                    statusEl.className = 'small text-warning';
+                }
+                // Gecici ag/proxy hatalari: yoklamayi surdur.
                 return;
             }
 
             const data = await response.json();
 
+            if (seq !== requestSeq || !current || current.deploymentId !== requestedId || source !== requestedSource) {
+                return;
+            }
+
+            if (data.source) {
+                lastUsedSource = data.source;
+                markActiveSource();
+            }
+
             if (!data.available) {
-                statusEl.textContent = sourceLabel(data.source) + ': '
+                // Sessiz tazelemede onceki satirlari koru; Docker 404 deploy sirasinda
+                // sik gecicidir — zamanlayiciyi DURDURMA, Yenile'ye mahkum etme.
+                if (silent) {
+                    statusEl.textContent = sourceLabel(data.source || lastUsedSource) + ': '
+                        + (data.unavailableReason || dm.t('Log cannot be read.'))
+                        + ' · ' + dm.t('reconnecting…');
+                    statusEl.className = 'small text-warning';
+                    return;
+                }
+
+                statusEl.textContent = sourceLabel(data.source || lastUsedSource) + ': '
                     + (data.unavailableReason || dm.t('Log cannot be read.'));
                 statusEl.className = 'small text-warning';
-                stopTimer();
                 return;
             }
 
             if (!data.lines || data.lines.length === 0) {
-                statusEl.textContent = dm.t('Log file is empty.');
-                statusEl.className = 'small text-secondary';
+                if (!silent) {
+                    statusEl.textContent = dm.t('Log file is empty.');
+                    statusEl.className = 'small text-secondary';
+                }
                 return;
             }
 
@@ -103,15 +143,20 @@
             statusEl.className = 'small text-secondary';
 
             // Bitmis bir build logu artik degismez: yoklamayi burada birakiyoruz.
+            // Container logu (veya auto→docker) calisan serviste akmaya devam edebilir.
             if (data.live === false && data.source === 'build') {
                 stopTimer();
                 statusEl.textContent = sourceLabel(data.source) + ' · ' + dm.t('last {0} lines', rows)
                     + ' · ' + dm.t('completed');
             }
         } catch (e) {
-            statusEl.textContent = dm.t('could not fetch log') + ' — ' + dm.t('server unreachable');
-            statusEl.className = 'small text-warning';
-            stopTimer();
+            if (seq !== requestSeq) return;
+
+            if (!silent) {
+                statusEl.textContent = dm.t('could not fetch log') + ' — ' + dm.t('server unreachable');
+                statusEl.className = 'small text-warning';
+            }
+            // Ag kopmasi gecici olabilir; zamanlayiciyi acik tut.
         } finally {
             inFlight = false;
         }
@@ -119,6 +164,8 @@
 
     function open(deploymentId, label) {
         current = { deploymentId: deploymentId, label: label };
+        source = ''; // her acilista auto: docker yoksa build
+        lastUsedSource = 'docker';
         titleEl.textContent = label || deploymentId;
         detailsLink.href = '/Deployments/Details/' + encodeURIComponent(deploymentId);
 
@@ -150,7 +197,7 @@
 
     modalEl.querySelectorAll('[data-log-source]').forEach(function (button) {
         button.addEventListener('click', function () {
-            source = button.getAttribute('data-log-source');
+            source = button.getAttribute('data-log-source') || '';
             markActiveSource();
 
             // Kaynak degisti: icerik bastan yuklenir, otomatik tazeleme yeniden kurulur.

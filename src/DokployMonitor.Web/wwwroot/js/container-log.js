@@ -4,6 +4,8 @@
 //
 // Ilk yuklemeden sonra log **kendiliginden** tazelenir (RefreshMs): calisan bir servisin
 // cikisi akmaya devam ediyor. Tazeleme artimlidir; kutu bosaltilmaz (dm.syncLogLines).
+//
+// Docker 404 (redeploy / henuz olusmamis container) gecici olabilir: yoklama durmaz.
 (function () {
     const dm = window.dm;
     const config = window.__logStream;
@@ -50,18 +52,20 @@
                 { headers: { 'Accept': 'application/json' } });
 
             if (!response.ok) {
-                statusEl.textContent = dm.t('could not fetch log') + ' (HTTP ' + response.status + ')';
-                statusEl.className = 'small text-warning';
-                stopTimer();
+                if (!silent) {
+                    statusEl.textContent = dm.t('could not fetch log') + ' (HTTP ' + response.status + ')';
+                    statusEl.className = 'small text-warning';
+                }
                 return;
             }
 
             const data = await response.json();
 
             if (!data.available) {
-                statusEl.textContent = data.unavailableReason || dm.t('Log cannot be read.');
+                // Sessiz turda onceki satirlari koru; zamanlayiciyi durdurma.
+                statusEl.textContent = (data.unavailableReason || dm.t('Log cannot be read.'))
+                    + (silent ? ' · ' + dm.t('reconnecting…') : '');
                 statusEl.className = 'small text-warning';
-                stopTimer();
                 return;
             }
 
@@ -78,9 +82,10 @@
                 + (timer !== null ? ' · ' + dm.t('live') : '');
             statusEl.className = 'small text-secondary';
         } catch (e) {
-            statusEl.textContent = dm.t('server unreachable');
-            statusEl.className = 'small text-warning';
-            stopTimer();
+            if (!silent) {
+                statusEl.textContent = dm.t('server unreachable');
+                statusEl.className = 'small text-warning';
+            }
         } finally {
             inFlight = false;
             button.disabled = false;

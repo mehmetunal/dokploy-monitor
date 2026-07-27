@@ -136,7 +136,35 @@ Istege bagli:
 
 ## Adim 6 — Mount'lar
 
-**Advanced → Volumes → Add Volume**, iki adet **Bind Mount**:
+### Once host tarafini dogrula
+
+`/etc/dokploy/logs` **Dokploy'un kendi klasorudur** — panel build loglarini oraya yazar,
+sizin olusturmaniz gerekmez. Yine de mount'u eklemeden once iki seyi dogrulayin:
+
+```bash
+# 1) Klasor var mi ve icinde servis klasorleri var mi?
+ls -ld /etc/dokploy/logs
+ls /etc/dokploy/logs | head
+
+# 2) Konteynerin kullanicisi (uid 1654) okuyabiliyor mu?
+sudo -u '#1654' ls /etc/dokploy/logs >/dev/null && echo "okunabilir" || echo "IZIN YOK"
+```
+
+- **Klasor yoksa**: `mkdir -p /etc/dokploy/logs`. Swarm, `docker run`'dan farkli olarak
+  bind kaynagini **otomatik olusturmaz**; yol yoksa gorev "bind source path does not exist"
+  ile baslamaz.
+- **"IZIN YOK" cikarsa**: loglar root'a ait ve digerleri okuyamiyor demektir:
+  `chmod -R o+rX /etc/dokploy/logs`. Klasorun **sahipligini degistirmeyin** (`chown`) —
+  orasi Dokploy'un yazdigi yer; salt-okunur mount + okuma izni yeterlidir.
+
+> Mount hic tanimli olmasa da uygulama calisir ve `/app/dokploy-logs` klasoru **var gorunur**
+> (imaj onu kendisi olusturuyor), ama **bostur**. Bu durumda log ekraninda
+> *"Log mount noktasi bos… bind mount yanlis klasoru gosteriyor olabilir"* yazar ve
+> **Tanilama** ekraninda *Log mount* satiri `✘ bos` isaretlenir.
+
+### Mount'lar
+
+**Advanced → Volumes → Add Volume**, uc adet **Bind Mount**:
 
 | # | Host yolu | Konteyner yolu | Mod | Nicin |
 |---|---|---|---|---|

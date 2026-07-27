@@ -108,16 +108,64 @@ public sealed class FileDeploymentLogReaderTests : IDisposable
     }
 
     /// <summary>
-    /// "Bulunamadi" mesaji denenen yolu tasimali: mount mu yanlis, dosya baska
-    /// sunucuda mi, yoksa Dokploy mu silmis — ancak yolu gorerek ayirt edilebiliyor.
+    /// Dosya yoksa sebep ayirt edilmeli: klasor var ama dosya yok ise mevcut dosya
+    /// adlari yazilir (isim uyusmazligi aninda gorunur).
     /// </summary>
     [Fact]
-    public async Task Missing_file_reason_names_the_path_that_was_probed()
+    public async Task Missing_file_in_an_existing_folder_lists_the_files_that_are_there()
     {
+        Write("api/baska.log", "x\n");
+
         var result = await _reader.ReadTailAsync("/etc/dokploy/logs/api/nope.log", maxLines: 10);
 
         Assert.False(result.Available);
-        Assert.Contains(Path.Combine(_mountPath, "api", "nope.log"), result.UnavailableReason);
+        Assert.Contains("nope.log", result.UnavailableReason);
+        Assert.Contains("baska.log", result.UnavailableReason);
+    }
+
+    /// <summary>Servisin klasoru hic yoksa: deployment baska sunucuda kosmus olabilir.</summary>
+    [Fact]
+    public async Task Missing_service_folder_points_at_another_server_or_cleanup()
+    {
+        Write("api/build.log", "x\n");   // mount bos olmasin
+
+        var result = await _reader.ReadTailAsync("/etc/dokploy/logs/baska-servis/build.log", maxLines: 10);
+
+        Assert.False(result.Available);
+        Assert.Contains("another Dokploy server", result.UnavailableReason);
+    }
+
+    /// <summary>Mount noktasi bos: bind mount yanlis klasoru gosteriyor.</summary>
+    [Fact]
+    public async Task Empty_mount_point_is_reported_as_a_wrong_bind_mount()
+    {
+        var empty = Path.Combine(Path.GetTempPath(), "dm-logs-bos-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(empty);
+
+        var reader = new FileDeploymentLogReader(
+            new SourceLanguageLocalizer(),
+            Options.Create(new LogOptions { MountPath = empty, HostPath = "/etc/dokploy/logs" }),
+            NullLogger<FileDeploymentLogReader>.Instance);
+
+        var result = await reader.ReadTailAsync("/etc/dokploy/logs/api/build.log", maxLines: 10);
+
+        Assert.False(result.Available);
+        Assert.Contains("empty", result.UnavailableReason);
+        Assert.Contains("/etc/dokploy/logs", result.UnavailableReason);
+
+        Directory.Delete(empty, recursive: true);
+    }
+
+    /// <summary>Servis klasoru var ama tamamen bos: log temizlenmis.</summary>
+    [Fact]
+    public async Task Empty_service_folder_is_reported_as_a_cleaned_log()
+    {
+        Directory.CreateDirectory(Path.Combine(_mountPath, "web"));
+
+        var result = await _reader.ReadTailAsync("/etc/dokploy/logs/web/build.log", maxLines: 10);
+
+        Assert.False(result.Available);
+        Assert.Contains("cleaned the log", result.UnavailableReason);
     }
 
     /// <summary>Mount klasoru hic yoksa mesaj mount'un nasil eklenecegini soylemeli.</summary>

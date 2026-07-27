@@ -162,18 +162,62 @@ public sealed class FileDeploymentLogReader(
 
         if (!File.Exists(candidate))
         {
-            // Aranan yolu da yazariz: mount yanlis mi, dosya baska sunucuda mi, yoksa
-            // Dokploy silmis mi — bunu ancak denenen yolu gorerek ayirt edebiliyoruz.
             logger.LogDebug("Build log bulunamadi. Denenen yol: {Candidate} (kayitli: {LogPath})", candidate, logPath);
-
-            reason = text["Build log file not found. Dokploy may have cleaned it up, the deployment may have run on another server, or the log folder is not mounted. Path tried: {0}",
-                candidate];
+            reason = DescribeMissingFile(mountRoot, candidate);
             return false;
         }
 
         resolved = candidate;
         reason = null;
         return true;
+    }
+
+    /// <summary>
+    /// Dosya yoksa **nicin** yok sorusunu ayirt eder. Tek bir "bulunamadi" mesaji
+    /// uretimde uc farkli sebebi ayni kefeye koyuyordu: yanlis mount, baska sunucuda
+    /// kosan deployment ve dosya izinleri. Klasor durumuna bakip her biri icin ayri
+    /// mesaj dondururuz; dizindeki ornek dosya adlari da isim uyusmazligini aninda gosterir.
+    /// </summary>
+    private string DescribeMissingFile(string mountRoot, string candidate)
+    {
+        var directory = Path.GetDirectoryName(candidate) ?? mountRoot;
+
+        try
+        {
+            // 1) Mount noktasi var ama bos: bind mount yanlis klasoru gosteriyor.
+            if (!Directory.EnumerateFileSystemEntries(mountRoot).Any())
+            {
+                return text["The log mount point is empty ({0}). The bind mount probably points at the wrong folder; it should be {1} on the host.",
+                    _options.MountPath, _options.HostPath];
+            }
+
+            // 2) Servisin klasoru hic yok: deployment baska sunucuda kosmus ya da temizlenmis.
+            if (!Directory.Exists(directory))
+            {
+                return text["This service has no log folder in the mount ({0}). The deployment probably ran on another Dokploy server, or Dokploy already cleaned the logs. Use the container log instead.",
+                    directory];
+            }
+
+            // 3) Klasor var, dosya yok: rotasyon/temizlik. Ornek adlar isim farkini gosterir.
+            var samples = Directory.EnumerateFiles(directory)
+                .Select(Path.GetFileName)
+                .Order(StringComparer.Ordinal)
+                .Take(3)
+                .ToList();
+
+            return samples.Count == 0
+                ? text["The service log folder is empty ({0}). Dokploy has probably cleaned the log.", directory]
+                : text["Build log file not found ({0}). Dokploy may have rotated or cleaned it. Files in the folder: {1}",
+                    Path.GetFileName(candidate), string.Join(", ", samples)];
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            // File.Exists izin hatasinda da false doner; bu yuzden ayrica raporlanmali.
+            logger.LogWarning(ex, "Log klasoru okunamadi: {Directory}", directory);
+
+            return text["The log folder cannot be read ({0}): {1}. The container runs as a non-root user; make the mounted folder readable for it.",
+                directory, ex.Message];
+        }
     }
 
     private static FileStream OpenShared(string path) =>

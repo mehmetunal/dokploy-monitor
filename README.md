@@ -501,6 +501,14 @@ Ozet:
    ```bash
    mkdir -p /var/lib/dokploy-monitor/data && chown -R 1654:1654 /var/lib/dokploy-monitor/data
    ```
+
+   `/etc/dokploy/logs` Dokploy'un kendi klasorudur (olusturmaniz gerekmez); yalnizca
+   uid `1654` icin okunabilir oldugunu dogrulayin — aksi halde log ekrani bos kalir:
+   ```bash
+   sudo -u '#1654' ls /etc/dokploy/logs >/dev/null && echo okunabilir || chmod -R o+rX /etc/dokploy/logs
+   ```
+   Mount tanimlanmazsa `/app/dokploy-logs` klasoru var ama **bos** olur; Tanilama
+   ekranindaki *Log mount* satiri bunu `✘ bos` olarak gosterir.
 5. **Domain**: Container Port **8080**, HTTPS + Let's Encrypt.
 6. **Webhook** (Dokploy → Settings → Notifications → Add Notification → saglayici: **Custom**):
    ```

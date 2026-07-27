@@ -53,7 +53,10 @@ public sealed class DockerLogReader(
 
         var tail = Math.Clamp(maxLines, 1, _options.MaxTailLines);
         var name = Uri.EscapeDataString(serviceOrContainerName);
-        var query = $"stdout=1&stderr=1&tail={tail}";
+
+        // follow=0 acikca yazilir: bazi daemon/istemci bilesimlerinde servis logu ucu
+        // yanit govdesini kapatmiyor ve istek zaman asimina kadar askida kaliyor.
+        var query = $"stdout=1&stderr=1&follow=0&tail={tail}";
 
         // Swarm servisi once: Dokploy uygulamalari swarm servisi olarak calisir. Bu deneme
         // "yumusak": swarm kapaliysa daemon 503 doner, servis yoksa 404 — her iki durumda da
@@ -88,7 +91,7 @@ public sealed class DockerLogReader(
         {
             return new ContainerLogHealth(
                 true, false, false, null,
-                $"Soket dosyasi yok: {_options.SocketPath}");
+                text["The socket file does not exist: {0}", _options.SocketPath]);
         }
 
         try
@@ -100,7 +103,7 @@ public sealed class DockerLogReader(
             {
                 return new ContainerLogHealth(
                     true, true, false, null,
-                    $"Engine API {(int)response.StatusCode} dondu.");
+                    text["The Docker Engine API returned {0}.", (int)response.StatusCode]);
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
@@ -119,18 +122,30 @@ public sealed class DockerLogReader(
         string path,
         CancellationToken ct)
     {
+        // Log kuyrugu okumak saniyeler surer. Akis kapanmazsa (bkz. DockerLogStream)
+        // istegi HttpClient zaman asimina birakmak yerine kendi butcemizle keseriz;
+        // boylece kullaniciya 2 dakika sonra 500 degil, aninda anlasilir bir mesaj doner.
+        //
+        // Ust sinir 15 sn: Docker__TimeoutSeconds daha buyuk verilse bile ekran istegi
+        // bunu asmaz (en kotu durum servis + container denemesi = 2 x butce).
+        var budget = TimeSpan.FromSeconds(Math.Clamp(_options.TimeoutSeconds, 2, 15));
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(budget);
+
         try
         {
             using var client = CreateClient();
             using var response = await client.GetAsync(
                 $"{_options.ApiVersion}/{path}",
                 HttpCompletionOption.ResponseHeadersRead,
-                ct);
+                timeout.Token);
 
             if (!response.IsSuccessStatusCode)
             {
                 // 503 = daemon swarm yoneticisi degil; 404 = boyle bir servis/container yok.
-                var reason = $"Docker Engine API {(int)response.StatusCode} dondu ({path.Split('?')[0]}).";
+                var reason = text["The Docker Engine API returned {0} ({1}).",
+                    (int)response.StatusCode, path.Split('?')[0]];
                 logger.LogDebug("Container logu okunamadi: {Reason}", reason);
 
                 var notFound = response.StatusCode is HttpStatusCode.NotFound
@@ -139,16 +154,26 @@ public sealed class DockerLogReader(
                 return (false, notFound, Unavailable(reason));
             }
 
-            await using var stream = await response.Content.ReadAsStreamAsync(ct);
-            var lines = await ReadStreamAsync(stream, ct);
+            await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+            var payload = await DockerLogStream.ReadBoundedAsync(stream, ct: timeout.Token);
 
-            return (true, false, new LogReadResult(lines, 0, true, null));
+            return (true, false, new LogReadResult(DockerLogFrames.ToLines(payload), 0, true, null));
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // Butce doldu: akis kapanmiyor ya da daemon yavas. Istek basarisiz degil,
+            // yalnizca container logu alinamadi — cagiran build loguna dusebilir.
+            var reason = text["Timed out after {0} s while reading the container log. The service may be streaming continuously; use the build log instead.",
+                (int)budget.TotalSeconds];
+
+            logger.LogWarning("Container logu zaman asimina ugradi ({Budget}s): {Path}", budget.TotalSeconds, path);
+            return (false, false, Unavailable(reason));
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
             var reason = IsAccessDenied(ex)
-                ? $"Docker soketine izin yok ({_options.SocketPath}). Host'ta soket grubu (or. docker GID) konteynere eklenmeli; gecici: chmod 666 {_options.SocketPath}."
-                : $"Docker soketine baglanilamadi: {ex.Message}";
+                ? text["Permission denied on the Docker socket ({0}). Add the socket group (e.g. the docker GID) to the container; temporary workaround: chmod 666 {0}.", _options.SocketPath]
+                : text["Could not connect to the Docker socket: {0}", ex.Message];
 
             // AccessDenied beklenen bir yapilandirma sorunu; stack trace gurultu yaratmasin.
             logger.LogWarning("Container logu okunamadi: {Reason}", reason);
@@ -172,14 +197,6 @@ public sealed class DockerLogReader(
         }
 
         return false;
-    }
-
-    private static async Task<List<string>> ReadStreamAsync(Stream stream, CancellationToken ct)
-    {
-        using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer, ct);
-
-        return DockerLogFrames.ToLines(buffer.ToArray());
     }
 
     private HttpClient CreateClient()

@@ -145,13 +145,22 @@
                     <dt class="col-5">@L["Log mount"]</dt>
                     <dd class="col-7">
                         @logs.MountPath
-                        @if (Directory.Exists(logs.MountPath))
+                        @* Klasorun var olmasi yetmez: imaj onu kendisi olusturuyor (Dockerfile),
+                           bu yuzden mount hic tanimli olmasa da "var" gorunur. Icerige bakariz. *@
+                        @if (!Directory.Exists(logs.MountPath))
                         {
-                            <span class="text-success">✔</span>
+                            <span class="text-danger">@L["✘ not found"]</span>
+                        }
+                        else if (!Directory.EnumerateFileSystemEntries(logs.MountPath).Any())
+                        {
+                            <span class="text-warning">@L["✘ empty — the bind mount is probably missing"]</span>
                         }
                         else
                         {
-                            <span class="text-danger">@L["✘ not found"]</span>
+                            <span class="text-success">✔</span>
+                            <span class="text-secondary">
+                                (@L["{0} service folders", Directory.EnumerateDirectories(logs.MountPath).Count()])
+                            </span>
                         }
                     </dd>
 

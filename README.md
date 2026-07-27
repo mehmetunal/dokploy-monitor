@@ -206,7 +206,7 @@ istiyorsaniz) Redis'i secin; tek konteynerde `Memory` yeterlidir.
 | `/Account/Login` | Giris (anonim) |
 | `/` | Canli pano: KPI'lar, aktif deploymentlar (canli sayac), kuyruk, son deploymentlar, webhook bildirimleri |
 | `/Deployments` | Filtrelenebilir gecmis (proje / durum / metin arama) |
-| `/Deployments/Details/{id}` | Canli build logu, **container logu (docker logs)**, hata mesaji, olay zaman cizelgesi, servisin ve projenin son deploylari, Durdur / Yeniden Deploy / **Replay** |
+| `/Deployments/Details/{id}` | Canli build logu (**seviyeli akis**, bkz. asagi), **container logu (docker logs)**, hata mesaji, olay zaman cizelgesi, servisin ve projenin son deploylari, Durdur / Yeniden Deploy / **Replay** |
 | `/Errors` | Hata analizi: proje / son N gun filtresi, gruplanmis hatalar, log onizleme |
 | `/Dashboard/Diagnostics` | Baglanti basina yetenek testi, Docker soketi durumu, webhook URL'i |
 | `/Connections` | Dokploy sunucu/API anahtari yonetimi (**SuperAdmin**) |
@@ -215,6 +215,25 @@ istiyorsaniz) Redis'i secin; tek konteynerde `Memory` yeterlidir.
 | `/health` | Saglik ucu (anonim) |
 
 Her ekranin goruntusu asagida: **[Ekran goruntuleri](#ekran-goruntuleri)**.
+
+### Log akisi (deploy adimlari)
+
+Build ve container loglari, Dokploy'un kendi deployment akisi gibi **satir satir
+seviyelendirilerek** gosterilir; boylece 1000+ satirlik bir build'de adimlar ve sorunlar
+goz taramasiyla bulunur:
+
+| Seviye | Ne zaman | Gorunum |
+|---|---|---|
+| `adim` | `Step 4/14`, `---> abc123`, `#22 …`, ayirici satirlar | kalin metin, gri sol kenar |
+| `hata` | `error CS1503`, `npm ERR!`, `Build FAILED`, `non-zero code`, `❌` | kirmizi kenar + soluk kirmizi zemin |
+| `uyari` | `warning CS8602`, `deprecated`, `⚠` | amber kenar + soluk amber zemin |
+| `basarili` | `Successfully built`, `converged`, `✓` | yesil rozet |
+| `bilgi` | diger her sey | notr |
+
+Kart basliginda ayrica **satir sayisi**, **Kopyala** (tum logu panoya) ve **Yalniz sorunlar**
+(sadece hata + uyari satirlari) bulunur. Siniflandirma istemci tarafinda tek yerde yapilir
+(`wwwroot/js/site.js` → `dm.logLevel`), rozet metinleri veritabanindaki cevirilerden gelir;
+sunucudan gelen ilk satirlar ve canli akisla eklenen satirlar ayni bicimi paylasir.
 
 ---
 

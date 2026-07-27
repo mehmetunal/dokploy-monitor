@@ -1,0 +1,351 @@
+@model DokployMonitor.Web.Models.GitHubIndexViewModel
+@{
+    ViewData["Title"] = L["GitHub"].Value;
+    var manifestAction = string.IsNullOrWhiteSpace(Model.Organization)
+        ? $"https://github.com/settings/apps/new?state={Uri.EscapeDataString(Model.ManifestState)}"
+        : $"https://github.com/organizations/{Uri.EscapeDataString(Model.Organization)}/settings/apps/new?state={Uri.EscapeDataString(Model.ManifestState)}";
+}
+
+<h1 class="h4 mb-1">@L["GitHub"]</h1>
+<p class="small text-secondary mb-3">
+    @L["Connect multiple GitHub accounts or organizations with Install App. Each installation can expose many repositories — pick one to manage branches and pull requests. No API key paste."]
+</p>
+
+@if (Model.App is null)
+{
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header">@L["Create GitHub App"]</div>
+                <div class="card-body">
+                    @if (!Model.CanManage)
+                    {
+                        <p class="mb-0 text-secondary">@L["Only SuperAdmin can create the GitHub App."]</p>
+                    }
+                    else
+                    {
+                        <p class="small text-secondary">
+                            @L["This opens GitHub and registers a private GitHub App for this Monitor instance. Credentials are stored automatically after you confirm."]
+                        </p>
+                        <p class="small text-secondary mb-3">
+                            @L["Public URL used for callbacks"]: <code>@Model.PublicBaseUrl</code>
+                        </p>
+                        @if (Model.PublicBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+                             || Model.PublicBaseUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="alert alert-info py-2 small">
+                                @L["Local development: leave Organization empty to create the app on your personal GitHub account. Webhooks are not used (GitHub rejects localhost)."]
+                            </div>
+                        }
+
+                        <form method="get" class="row g-2 align-items-end mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small mb-1" for="org">@L["Organization (optional)"]</label>
+                                <input class="form-control form-control-sm" id="org" name="org" value="@Model.Organization"
+                                       placeholder="@L["leave empty for personal account"]" />
+                            </div>
+                            <div class="col-auto">
+                                <button class="btn btn-sm btn-outline-secondary" type="submit">@L["Apply"]</button>
+                            </div>
+                        </form>
+
+                        <form action="@manifestAction" method="post" id="github-manifest-form">
+                            <input type="hidden" name="manifest" id="github-manifest" />
+                            <button class="btn btn-primary" type="submit">@L["Create GitHub App"]</button>
+                        </form>
+                        <script>
+                            document.getElementById('github-manifest').value = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ManifestJson));
+                        </script>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header">@L["How it works"]</div>
+                <ol class="list-group list-group-numbered list-group-flush small">
+                    <li class="list-group-item">@L["Create GitHub App (one click)"]</li>
+                    <li class="list-group-item">@L["Install App on each account or organization you need"]</li>
+                    <li class="list-group-item">@L["Select an installation, then open a repository"]</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <div>
+            <span class="fw-semibold">@Model.App.Name</span>
+            <span class="text-secondary small">(@Model.App.Slug)</span>
+            <span class="badge text-bg-secondary ms-1">@L["{0} installations", Model.Installations.Count]</span>
+            @if (!string.IsNullOrWhiteSpace(Model.App.HtmlUrl))
+            {
+                <a class="small ms-1" href="@Model.App.HtmlUrl" target="_blank" rel="noopener">@L["App settings"]</a>
+            }
+        </div>
+        <div class="ms-auto d-flex flex-wrap gap-2">
+            @if (Model.CanManage)
+            {
+                var installUrl = $"https://github.com/apps/{Uri.EscapeDataString(Model.App.Slug)}/installations/new";
+                <button type="button"
+                        class="btn btn-sm btn-primary"
+                        id="gh-install-open"
+                        data-bs-toggle="modal"
+                        data-bs-target="#gh-install-modal"
+                        data-install-url="@installUrl">
+                    @L["Install App on another account"]
+                </button>
+                <form method="post" asp-action="SyncInstallations" class="m-0">
+                    <button class="btn btn-sm btn-outline-secondary" type="submit">@L["Refresh installations"]</button>
+                </form>
+                <form method="post" asp-action="Disconnect" class="m-0"
+                      data-confirm="@L["Remove GitHub App credentials from Monitor?"]">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">@L["Disconnect"]</button>
+                </form>
+            }
+        </div>
+    </div>
+
+    @if (Model.CanManage)
+    {
+        var installUrl = $"https://github.com/apps/{Uri.EscapeDataString(Model.App.Slug)}/installations/new";
+        <div class="modal fade" id="gh-install-modal" tabindex="-1" aria-labelledby="gh-install-modal-title" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h2 class="modal-title h6 mb-0" id="gh-install-modal-title">@L["Install App on another account"]</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@L["Cancel"]"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <p class="mb-3">
+                            @L["Complete the installation on GitHub in the popup window. When you finish, this page refreshes automatically."]
+                        </p>
+                        <div id="gh-install-status" class="alert alert-info py-2 small mb-3">
+                            @L["Opening GitHub…"]
+                        </div>
+                        <div class="d-grid gap-2 d-sm-flex">
+                            <button type="button" class="btn btn-primary" id="gh-install-popup">@L["Open GitHub popup"]</button>
+                            <form method="post" asp-action="SyncInstallations" class="m-0">
+                                <button class="btn btn-outline-secondary" type="submit">@L["Refresh installations"]</button>
+                            </form>
+                        </div>
+                        <p class="small text-secondary mt-3 mb-0">
+                            @L["GitHub cannot be embedded in this page, so a popup window is used."]
+                        </p>
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">@L["Close"]</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">@L["Accounts / organizations"] (@Model.Installations.Count)</div>
+                <div class="list-group list-group-flush">
+                    @if (Model.Installations.Count == 0)
+                    {
+                        <div class="list-group-item text-secondary small">
+                            @L["No installations yet. Click Install App, then return here."]
+                        </div>
+                    }
+                    @foreach (var item in Model.Installations)
+                    {
+                        var active = item.Id == Model.SelectedInstallationId;
+                        <a class="list-group-item list-group-item-action @(active ? "active" : null)"
+                           asp-action="Index" asp-route-installation="@item.Id">
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrWhiteSpace(item.AccountAvatarUrl))
+                                {
+                                    <img src="@item.AccountAvatarUrl" alt="" width="24" height="24" class="rounded" />
+                                }
+                                <div class="min-w-0">
+                                    <div class="fw-semibold text-truncate">@item.AccountLogin</div>
+                                    <div class="small @(active ? "" : "text-secondary")">@item.AccountType</div>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    @if (Model.SelectedInstallation is { } selected)
+                    {
+                        <span>@L["Repositories for {0}", selected.AccountLogin] (@Model.Repositories.Count)</span>
+                    }
+                    else
+                    {
+                        <span>@L["Repositories"] (@Model.Repositories.Count)</span>
+                    }
+                </div>
+                @if (Model.SelectedInstallation is not null)
+                {
+                    <div class="card-body border-bottom py-2">
+                        <form method="get" class="row g-2 align-items-center" asp-action="Index">
+                            <input type="hidden" name="installation" value="@Model.SelectedInstallationId" />
+                            <div class="col">
+                                <input class="form-control form-control-sm" type="search" name="q" value="@Model.RepoQuery"
+                                       placeholder="@L["Filter repositories…"]" />
+                            </div>
+                            <div class="col-auto">
+                                <button class="btn btn-sm btn-outline-secondary" type="submit">@L["Filter"]</button>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(Model.RepoQuery))
+                            {
+                                <div class="col-auto">
+                                    <a class="btn btn-sm btn-link" asp-action="Index"
+                                       asp-route-installation="@Model.SelectedInstallationId">@L["Clear"]</a>
+                                </div>
+                            }
+                        </form>
+                    </div>
+                }
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>@L["Repository"]</th>
+                                <th style="width:7rem">@L["Owner"]</th>
+                                <th style="width:7rem">@L["Default"]</th>
+                                <th style="width:5rem"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.SelectedInstallation is null)
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center text-secondary py-4">
+                                        @L["Select an account on the left."]
+                                    </td>
+                                </tr>
+                            }
+                            else if (Model.Repositories.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center text-secondary py-4">
+                                        @if (!string.IsNullOrWhiteSpace(Model.RepoQuery))
+                                        {
+                                            @L["No repositories match the filter."]
+                                        }
+                                        else
+                                        {
+                                            @L["No repositories visible for this installation."]
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @foreach (var repo in Model.Repositories)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">
+                                            <a class="text-decoration-none"
+                                               asp-action="Repo"
+                                               asp-route-installationId="@Model.SelectedInstallationId"
+                                               asp-route-owner="@repo.OwnerLogin"
+                                               asp-route-name="@repo.Name">@repo.FullName</a>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(repo.Description))
+                                        {
+                                            <div class="small text-secondary text-truncate" style="max-width:28rem">@repo.Description</div>
+                                        }
+                                        @if (repo.Private)
+                                        {
+                                            <span class="badge text-bg-secondary">@L["private"]</span>
+                                        }
+                                    </td>
+                                    <td class="small"><code>@repo.OwnerLogin</code></td>
+                                    <td><code class="small">@repo.DefaultBranch</code></td>
+                                    <td class="text-end">
+                                        <a class="btn btn-sm btn-outline-primary"
+                                           asp-action="Repo"
+                                           asp-route-installationId="@Model.SelectedInstallationId"
+                                           asp-route-owner="@repo.OwnerLogin"
+                                           asp-route-name="@repo.Name">@L["Open"]</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            const modalEl = document.getElementById('gh-install-modal');
+            const openBtn = document.getElementById('gh-install-open');
+            if (!modalEl || !openBtn) return;
+
+            const url = openBtn.getAttribute('data-install-url');
+            const statusEl = document.getElementById('gh-install-status');
+            const popupBtn = document.getElementById('gh-install-popup');
+            let popup = null;
+            let watchTimer = null;
+
+            function setStatus(text, css) {
+                if (!statusEl) return;
+                statusEl.textContent = text;
+                statusEl.className = 'alert py-2 small mb-3 ' + (css || 'alert-info');
+            }
+
+            function openPopup() {
+                if (!url) return null;
+                const width = Math.min(1100, screen.availWidth - 40);
+                const height = Math.min(820, screen.availHeight - 40);
+                const left = Math.max(0, (screen.availWidth - width) / 2);
+                const top = Math.max(0, (screen.availHeight - height) / 2);
+                popup = window.open(
+                    url,
+                    'github-install',
+                    'popup=yes,noopener=no,width=' + width + ',height=' + height + ',left=' + left + ',top=' + top);
+                if (!popup || popup.closed) {
+                    setStatus(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(L["Popup blocked. Allow popups for this site, then try again."].Value)), 'alert-warning');
+                    return null;
+                }
+                setStatus(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(L["GitHub popup is open. Finish the install there…"].Value)), 'alert-info');
+                watchPopup();
+                return popup;
+            }
+
+            function watchPopup() {
+                if (watchTimer) clearInterval(watchTimer);
+                watchTimer = setInterval(function () {
+                    if (!popup || popup.closed) {
+                        clearInterval(watchTimer);
+                        watchTimer = null;
+                        setStatus(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(L["Popup closed. Refreshing installations…"].Value)), 'alert-success');
+                        setTimeout(function () { window.location.reload(); }, 600);
+                    }
+                }, 800);
+            }
+
+            modalEl.addEventListener('shown.bs.modal', function () {
+                openPopup();
+            });
+
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                if (watchTimer) {
+                    clearInterval(watchTimer);
+                    watchTimer = null;
+                }
+            });
+
+            if (popupBtn) {
+                popupBtn.addEventListener('click', function () {
+                    openPopup();
+                });
+            }
+        })();
+    </script>
+}

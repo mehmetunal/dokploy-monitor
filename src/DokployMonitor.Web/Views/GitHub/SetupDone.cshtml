@@ -1,0 +1,30 @@
+@model DokployMonitor.Web.Models.GitHubSetupDoneViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@Model.Message</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+</head>
+<body class="p-4">
+    <div class="alert alert-success">@Model.Message</div>
+    <p class="small text-secondary mb-0">@L["This window will close automatically…"]</p>
+    <script>
+        (function () {
+            var url = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RedirectUrl));
+            try {
+                if (window.opener && !window.opener.closed) {
+                    window.opener.location = url;
+                    window.close();
+                    return;
+                }
+            } catch (e) { /* cross-origin */ }
+            window.location.replace(url);
+        })();
+    </script>
+</body>
+</html>

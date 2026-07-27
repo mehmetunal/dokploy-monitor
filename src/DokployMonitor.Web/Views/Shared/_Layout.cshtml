@@ -56,6 +56,7 @@
                 <a class="nav-link @(isLiveDashboard ? "active" : null)" asp-controller="Dashboard" asp-action="Index">@L["Live Dashboard"]</a>
                 <a class="@NavClass("Deployments")" asp-controller="Deployments" asp-action="Index">@L["History"]</a>
                 <a class="@NavClass("Errors")" asp-controller="Errors" asp-action="Index">@L["Error Analysis"]</a>
+                <a class="@NavClass("GitHub")" asp-controller="GitHub" asp-action="Index">@L["GitHub"]</a>
                 <a class="nav-link @(isDiagnostics ? "active" : null)" asp-controller="Dashboard" asp-action="Diagnostics">@L["Diagnostics"]</a>
                 @if (isSuperAdmin)
                 {
@@ -160,6 +161,7 @@
                 <span>@L["Error Analysis"]</span>
             </a>
             <button type="button" class="@BottomClass(isDiagnostics
+                    || string.Equals(controller, "GitHub", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(controller, "Connections", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(controller, "Users", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(controller, "Translations", StringComparison.OrdinalIgnoreCase)
@@ -180,6 +182,8 @@
                 <div class="list-group list-group-flush">
                     <a class="list-group-item list-group-item-action @(isDiagnostics ? "active" : null)"
                        asp-controller="Dashboard" asp-action="Diagnostics">@L["Diagnostics"]</a>
+                    <a class="list-group-item list-group-item-action @(string.Equals(controller, "GitHub", StringComparison.OrdinalIgnoreCase) ? "active" : null)"
+                       asp-controller="GitHub" asp-action="Index">@L["GitHub"]</a>
                     @if (isSuperAdmin)
                     {
                         <a class="list-group-item list-group-item-action @(string.Equals(controller, "Connections", StringComparison.OrdinalIgnoreCase) ? "active" : null)"

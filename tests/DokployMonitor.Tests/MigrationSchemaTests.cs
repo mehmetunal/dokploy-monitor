@@ -35,7 +35,8 @@ public sealed class MigrationSchemaTests
                 "AspNetRoleClaims", "AspNetRoles", "AspNetUserClaims", "AspNetUserLogins",
                 "AspNetUserRoles", "AspNetUsers", "AspNetUserTokens",
                 "DeploymentEvents", "Deployments", "DokployConnections",
-                "ErrorSignatures", "Translations", "WebhookNotifications",
+                "ErrorSignatures", "GitHubAppRegistrations", "GitHubInstallations", "GitHubRepoRules",
+                "Translations", "WebhookNotifications",
             ],
             TableNames(connectionString));
     }

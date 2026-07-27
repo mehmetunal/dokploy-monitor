@@ -1,5 +1,6 @@
 using DokployMonitor.Core.Deployments;
 using DokployMonitor.Core.Dokploy;
+using DokployMonitor.Core.GitHub;
 using DokployMonitor.Core.Localization;
 using DokployMonitor.Core.Notifications;
 using DokployMonitor.Infrastructure.Identity;
@@ -16,6 +17,9 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
     : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<DokployConnection> Connections => Set<DokployConnection>();
+    public DbSet<GitHubAppRegistration> GitHubApps => Set<GitHubAppRegistration>();
+    public DbSet<GitHubInstallation> GitHubInstallations => Set<GitHubInstallation>();
+    public DbSet<GitHubRepoRules> GitHubRepoRules => Set<GitHubRepoRules>();
     public DbSet<Translation> Translations => Set<Translation>();
     public DbSet<TrackedDeployment> Deployments => Set<TrackedDeployment>();
     public DbSet<DeploymentEvent> DeploymentEvents => Set<DeploymentEvent>();
@@ -34,6 +38,48 @@ public sealed class MonitorDbContext(DbContextOptions<MonitorDbContext> options)
             entity.Property(c => c.Id).HasMaxLength(64);
             entity.Property(c => c.Name).HasMaxLength(128);
             entity.HasIndex(c => c.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<GitHubAppRegistration>(entity =>
+        {
+            entity.ToTable("GitHubAppRegistrations");
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Id).HasMaxLength(64);
+            entity.Property(a => a.ClientId).HasMaxLength(128);
+            entity.Property(a => a.Slug).HasMaxLength(128);
+            entity.Property(a => a.Name).HasMaxLength(256);
+            entity.Property(a => a.OwnerLogin).HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<GitHubInstallation>(entity =>
+        {
+            entity.ToTable("GitHubInstallations");
+            entity.HasKey(i => i.Id);
+            entity.Property(i => i.Id).HasMaxLength(64);
+            entity.Property(i => i.AppRegistrationId).HasMaxLength(64);
+            entity.Property(i => i.AccountLogin).HasMaxLength(256);
+            entity.Property(i => i.AccountType).HasMaxLength(32);
+            entity.HasIndex(i => i.AppRegistrationId);
+            entity.HasIndex(i => i.InstallationId).IsUnique();
+            entity.HasOne<GitHubAppRegistration>()
+                .WithMany()
+                .HasForeignKey(i => i.AppRegistrationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GitHubRepoRules>(entity =>
+        {
+            entity.ToTable("GitHubRepoRules");
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Id).HasMaxLength(64);
+            entity.Property(r => r.InstallationId).HasMaxLength(64);
+            entity.Property(r => r.Owner).HasMaxLength(256);
+            entity.Property(r => r.Repo).HasMaxLength(256);
+            entity.HasIndex(r => new { r.InstallationId, r.Owner, r.Repo }).IsUnique();
+            entity.HasOne<GitHubInstallation>()
+                .WithMany()
+                .HasForeignKey(r => r.InstallationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Translation>(entity =>

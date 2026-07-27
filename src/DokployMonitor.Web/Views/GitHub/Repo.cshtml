@@ -1,0 +1,428 @@
+@model DokployMonitor.Web.Models.GitHubRepoViewModel
+@using DokployMonitor.Core.GitHub
+@{
+    ViewData["Title"] = Model.Repo.FullName;
+    var installationId = Model.Installation.Id;
+    var owner = Model.Repo.OwnerLogin;
+    var name = Model.Repo.Name;
+}
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <div>
+        <nav class="small text-secondary mb-1" aria-label="breadcrumb">
+            <a class="text-secondary text-decoration-none" asp-action="Index">@L["GitHub"]</a>
+            <span class="mx-1">/</span>
+            <a class="text-secondary text-decoration-none"
+               asp-action="Index" asp-route-installation="@installationId">@Model.Installation.AccountLogin</a>
+            <span class="mx-1">/</span>
+            <span class="text-body">@Model.Repo.FullName</span>
+        </nav>
+        <h1 class="h4 mb-0">@Model.Repo.FullName</h1>
+        <div class="small text-secondary">
+            <span class="badge text-bg-light border">@Model.Installation.AccountType · @Model.Installation.AccountLogin</span>
+            · @L["Default"]: <code>@Model.Repo.DefaultBranch</code>
+            · <a href="@Model.Repo.HtmlUrl" target="_blank" rel="noopener">@L["Open on GitHub"]</a>
+            · <span id="gh-live-status" class="badge text-bg-secondary">@L["live"]</span>
+        </div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+<div class="row g-3"
+     id="gh-repo-live"
+     data-installation-id="@installationId"
+     data-owner="@owner"
+     data-name="@name"
+     data-default-branch="@Model.Repo.DefaultBranch"
+     data-can-manage="@Model.CanManage.ToString().ToLowerInvariant()"
+     data-poll-ms="2000">
+    <div class="col-xl-6">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span id="gh-branches-title">@L["Branches"] (@Model.Branches.Count)</span>
+            </div>
+            <div class="table-responsive" style="max-height:22rem; overflow:auto">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>@L["Name"]</th>
+                            <th style="width:5rem"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="gh-branches-body">
+                        @* Ilk icerik JS polling ile de guncellenir; SSR anlik gosterim icin. *@
+                        @foreach (var branch in Model.Branches)
+                        {
+                            <tr>
+                                <td>
+                                    <code>@branch.Name</code>
+                                    @if (branch.Protected)
+                                    {
+                                        <span class="badge text-bg-warning ms-1">@L["protected"]</span>
+                                    }
+                                    @if (string.Equals(branch.Name, Model.Repo.DefaultBranch, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="badge text-bg-success ms-1">@L["default"]</span>
+                                    }
+                                    <div class="small text-secondary">@branch.Sha[..Math.Min(7, branch.Sha.Length)]</div>
+                                </td>
+                                <td class="text-end">
+                                    @{
+                                        var protectedDeletes = GitHubBranchRuleEvaluator
+                                            .ParseList(Model.Rules.ProtectedFromDeleteBranches);
+                                        var canDelete = Model.CanManage
+                                            && Model.Rules.AllowDeleteBranch
+                                            && !string.Equals(branch.Name, Model.Repo.DefaultBranch, StringComparison.OrdinalIgnoreCase)
+                                            && !branch.Protected
+                                            && !GitHubBranchRuleEvaluator.IsMatch(protectedDeletes, branch.Name);
+                                    }
+                                    @if (canDelete)
+                                    {
+                                        <form method="post" asp-action="DeleteBranch" class="m-0 d-inline"
+                                              data-confirm="@L["Delete branch '{0}'?", branch.Name]">
+                                            <input type="hidden" name="installationId" value="@installationId" />
+                                            <input type="hidden" name="owner" value="@owner" />
+                                            <input type="hidden" name="name" value="@name" />
+                                            <input type="hidden" name="branch" value="@branch.Name" />
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">@L["Delete"]</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (Model.CanManage)
+        {
+            var rules = Model.Rules;
+            var allowedCreateFrom = GitHubBranchRuleEvaluator.ParseList(rules.AllowedCreateFromBranches);
+            var allowedMergeInto = GitHubBranchRuleEvaluator.ParseList(rules.AllowedMergeIntoBranches);
+            var forbiddenMergeInto = GitHubBranchRuleEvaluator.ParseList(rules.ForbiddenMergeIntoBranches);
+
+            <div class="card mb-3" id="gh-rules-card">
+                <div class="card-header">@L["Branch rules"]</div>
+                <div class="card-body">
+                    <p class="small text-secondary mb-3">
+                        @L["Control which branches can be created from, merged into, or deleted from this panel. Empty lists mean no extra restriction."]
+                    </p>
+                    <form method="post" asp-action="SaveRepoRules" class="row g-3">
+                        <input type="hidden" name="InstallationId" value="@installationId" />
+                        <input type="hidden" name="Owner" value="@owner" />
+                        <input type="hidden" name="Name" value="@name" />
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input type="hidden" name="AllowCreateBranch" value="false" />
+                                <input class="form-check-input" type="checkbox" name="AllowCreateBranch" value="true"
+                                       id="AllowCreateBranch" @(rules.AllowCreateBranch ? "checked" : null) />
+                                <label class="form-check-label" for="AllowCreateBranch">@L["Allow create branch"]</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input type="hidden" name="AllowMergeBranches" value="false" />
+                                <input class="form-check-input" type="checkbox" name="AllowMergeBranches" value="true"
+                                       id="AllowMergeBranches" @(rules.AllowMergeBranches ? "checked" : null) />
+                                <label class="form-check-label" for="AllowMergeBranches">@L["Allow merge branches"]</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input type="hidden" name="AllowDeleteBranch" value="false" />
+                                <input class="form-check-input" type="checkbox" name="AllowDeleteBranch" value="true"
+                                       id="AllowDeleteBranch" @(rules.AllowDeleteBranch ? "checked" : null) />
+                                <label class="form-check-label" for="AllowDeleteBranch">@L["Allow delete branch"]</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1" for="AllowedCreateFromBranches">
+                                @L["Create only from (whitelist)"]
+                            </label>
+                            <textarea class="form-control form-control-sm font-monospace" rows="3"
+                                      id="AllowedCreateFromBranches" name="AllowedCreateFromBranches"
+                                      placeholder="main&#10;develop">@rules.AllowedCreateFromBranches</textarea>
+                            <div class="form-text">@L["One branch per line. Empty = any branch."]</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1" for="AllowedMergeIntoBranches">
+                                @L["Merge only into (whitelist)"]
+                            </label>
+                            <textarea class="form-control form-control-sm font-monospace" rows="3"
+                                      id="AllowedMergeIntoBranches" name="AllowedMergeIntoBranches"
+                                      placeholder="develop&#10;staging">@rules.AllowedMergeIntoBranches</textarea>
+                            <div class="form-text">@L["Empty = all except forbidden list."]</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1" for="ForbiddenMergeIntoBranches">
+                                @L["Forbidden merge targets"]
+                            </label>
+                            <textarea class="form-control form-control-sm font-monospace" rows="3"
+                                      id="ForbiddenMergeIntoBranches" name="ForbiddenMergeIntoBranches"
+                                      placeholder="main&#10;production">@rules.ForbiddenMergeIntoBranches</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1" for="ProtectedFromDeleteBranches">
+                                @L["Protected from delete"]
+                            </label>
+                            <textarea class="form-control form-control-sm font-monospace" rows="3"
+                                      id="ProtectedFromDeleteBranches" name="ProtectedFromDeleteBranches"
+                                      placeholder="main&#10;develop">@rules.ProtectedFromDeleteBranches</textarea>
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-sm btn-primary" type="submit">@L["Save rules"]</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-3" id="gh-create-branch-card" style="@(rules.AllowCreateBranch ? null : "display:none")">
+                <div class="card-header">@L["Create branch"]</div>
+                <div class="card-body">
+                    <form method="post" asp-action="CreateBranch" class="row g-2 align-items-end">
+                        <input type="hidden" name="installationId" value="@installationId" />
+                        <input type="hidden" name="owner" value="@owner" />
+                        <input type="hidden" name="name" value="@name" />
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">@L["From"]</label>
+                            <select class="form-select form-select-sm gh-branch-select" name="fromBranch" id="gh-from-branch" required>
+                                @foreach (var branch in Model.Branches)
+                                {
+                                    if (allowedCreateFrom.Count > 0
+                                        && !GitHubBranchRuleEvaluator.IsMatch(allowedCreateFrom, branch.Name))
+                                    {
+                                        continue;
+                                    }
+
+                                    if (branch.Name == Model.Repo.DefaultBranch
+                                        || (allowedCreateFrom.Count > 0 && string.Equals(branch.Name, allowedCreateFrom[0], StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        <option value="@branch.Name" selected>@branch.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@branch.Name">@branch.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small mb-1">@L["New branch"]</label>
+                            <input class="form-control form-control-sm" name="newBranch" required maxlength="200" />
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-sm btn-primary w-100" type="submit">@L["Create"]</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-3" id="gh-merge-branches-card" style="@(rules.AllowMergeBranches ? null : "display:none")">
+                <div class="card-header">@L["Merge branches"]</div>
+                <div class="card-body">
+                    <form method="post" asp-action="MergeBranches" class="row g-2 align-items-end"
+                          data-confirm="@L["Merge the selected branches?"]">
+                        <input type="hidden" name="installationId" value="@installationId" />
+                        <input type="hidden" name="owner" value="@owner" />
+                        <input type="hidden" name="name" value="@name" />
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">@L["Base (into)"]</label>
+                            <select class="form-select form-select-sm gh-branch-select" name="baseBranch" id="gh-base-branch" required>
+                                @foreach (var branch in Model.Branches)
+                                {
+                                    if (GitHubBranchRuleEvaluator.IsMatch(forbiddenMergeInto, branch.Name))
+                                    {
+                                        continue;
+                                    }
+
+                                    if (allowedMergeInto.Count > 0
+                                        && !GitHubBranchRuleEvaluator.IsMatch(allowedMergeInto, branch.Name))
+                                    {
+                                        continue;
+                                    }
+
+                                    if (branch.Name == Model.Repo.DefaultBranch)
+                                    {
+                                        <option value="@branch.Name" selected>@branch.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@branch.Name">@branch.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">@L["Head (from)"]</label>
+                            <select class="form-select form-select-sm gh-branch-select" name="headBranch" id="gh-head-branch" required>
+                                @foreach (var branch in Model.Branches)
+                                {
+                                    <option value="@branch.Name">@branch.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-sm btn-outline-primary w-100" type="submit">@L["Merge"]</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-xl-6">
+        <div class="card mb-3">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                <span>@L["Pull requests"]</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="@L["Pull requests"]">
+                    <button type="button" class="btn btn-outline-primary active" data-gh-pr-tab="open" id="gh-tab-open">
+                        @L["Open"] (<span id="gh-count-open">@Model.OpenPullRequests.Count</span>)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-gh-pr-tab="merged" id="gh-tab-merged">
+                        @L["Merged"] (<span id="gh-count-merged">@Model.MergedPullRequests.Count</span>)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" data-gh-pr-tab="closed" id="gh-tab-closed">
+                        @L["Closed"] (<span id="gh-count-closed">@Model.ClosedPullRequests.Count</span>)
+                    </button>
+                </div>
+            </div>
+            <div id="gh-prs-body" data-active-tab="open">
+                @* Icerik JS ile yenilenir; SSR ilk paint. *@
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                <span id="gh-commits-title">@L["Commits"] — <code id="gh-commits-branch-label">@Model.CommitsBranch</code></span>
+                <select class="form-select form-select-sm w-auto" id="gh-commits-branch" title="@L["Branch"]">
+                    @foreach (var branch in Model.Branches)
+                    {
+                        if (branch.Name == Model.CommitsBranch)
+                        {
+                            <option value="@branch.Name" selected>@branch.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@branch.Name">@branch.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="list-group list-group-flush" id="gh-commits-body" style="max-height:28rem; overflow:auto">
+                @foreach (var commit in Model.Commits)
+                {
+                    <div class="list-group-item py-2">
+                        <a href="@commit.HtmlUrl" target="_blank" rel="noopener" class="fw-semibold text-decoration-none small">
+                            @commit.Message
+                        </a>
+                        <div class="small text-secondary">
+                            <code>@commit.Sha[..Math.Min(7, commit.Sha.Length)]</code>
+                            · @commit.AuthorName
+                            @if (commit.CommittedAt is { } at)
+                            {
+                                <span>· @at.ToLocalTime().ToString("g")</span>
+                            }
+                        </div>
+                    </div>
+                }
+                @if (Model.Commits.Count == 0)
+                {
+                    <div class="list-group-item text-secondary small">@L["No commits."]</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.ghRepoI18n = @Html.Raw(Json.Serialize(new Dictionary<string, string>
+        {
+            ["Branches"] = L["Branches"].Value,
+            ["Open"] = L["Open"].Value,
+            ["Merged"] = L["Merged"].Value,
+            ["Closed"] = L["Closed"].Value,
+            ["No open pull requests."] = L["No open pull requests."].Value,
+            ["No merged pull requests."] = L["No merged pull requests."].Value,
+            ["No closed pull requests."] = L["No closed pull requests."].Value,
+            ["No commits."] = L["No commits."].Value,
+            ["Commits"] = L["Commits"].Value,
+            ["protected"] = L["protected"].Value,
+            ["default"] = L["default"].Value,
+            ["Delete"] = L["Delete"].Value,
+            ["Delete branch '{0}'?"] = L["Delete branch '{0}'?"].Value,
+            ["Approve"] = L["Approve"].Value,
+            ["Request changes"] = L["Request changes"].Value,
+            ["Merge"] = L["Merge"].Value,
+            ["Close"] = L["Close"].Value,
+            ["Request changes on PR #{0}?"] = L["Request changes on PR #{0}?"].Value,
+            ["Merge PR #{0}?"] = L["Merge PR #{0}?"].Value,
+            ["Close PR #{0}?"] = L["Close PR #{0}?"].Value,
+            ["draft"] = L["draft"].Value,
+            ["live"] = L["live"].Value,
+            ["updating…"] = L["updating…"].Value,
+            ["live refresh error"] = L["live refresh error"].Value,
+        }));
+        window.ghRepoInitial = @Html.Raw(Json.Serialize(new
+        {
+            rules = new
+            {
+                allowCreateBranch = Model.Rules.AllowCreateBranch,
+                allowMergeBranches = Model.Rules.AllowMergeBranches,
+                allowDeleteBranch = Model.Rules.AllowDeleteBranch,
+                allowedCreateFromBranches = GitHubBranchRuleEvaluator.ParseList(Model.Rules.AllowedCreateFromBranches),
+                allowedMergeIntoBranches = GitHubBranchRuleEvaluator.ParseList(Model.Rules.AllowedMergeIntoBranches),
+                forbiddenMergeIntoBranches = GitHubBranchRuleEvaluator.ParseList(Model.Rules.ForbiddenMergeIntoBranches),
+                protectedFromDeleteBranches = GitHubBranchRuleEvaluator.ParseList(Model.Rules.ProtectedFromDeleteBranches),
+            },
+            openPullRequests = Model.OpenPullRequests.Select(pr => new
+            {
+                pr.Number,
+                pr.Title,
+                pr.State,
+                pr.HeadRef,
+                pr.BaseRef,
+                pr.HtmlUrl,
+                pr.UserLogin,
+                pr.Draft,
+                pr.Merged,
+                pr.UpdatedAt,
+                pr.MergedAt,
+                pr.ClosedAt,
+            }),
+            mergedPullRequests = Model.MergedPullRequests.Select(pr => new
+            {
+                pr.Number,
+                pr.Title,
+                pr.State,
+                pr.HeadRef,
+                pr.BaseRef,
+                pr.HtmlUrl,
+                pr.UserLogin,
+                pr.Draft,
+                pr.Merged,
+                pr.UpdatedAt,
+                pr.MergedAt,
+                pr.ClosedAt,
+            }),
+            closedPullRequests = Model.ClosedPullRequests.Select(pr => new
+            {
+                pr.Number,
+                pr.Title,
+                pr.State,
+                pr.HeadRef,
+                pr.BaseRef,
+                pr.HtmlUrl,
+                pr.UserLogin,
+                pr.Draft,
+                pr.Merged,
+                pr.UpdatedAt,
+                pr.MergedAt,
+                pr.ClosedAt,
+            }),
+        }));
+    </script>
+    <script src="~/js/github-repo.js" asp-append-version="true"></script>
+}

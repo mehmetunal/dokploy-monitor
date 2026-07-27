@@ -6,6 +6,7 @@ using DokployMonitor.Core.Abstractions;
 using DokployMonitor.Infrastructure.Caching;
 using DokployMonitor.Infrastructure.Docker;
 using DokployMonitor.Infrastructure.Dokploy;
+using DokployMonitor.Infrastructure.GitHub;
 using DokployMonitor.Infrastructure.Localization;
 using DokployMonitor.Infrastructure.Logs;
 using DokployMonitor.Infrastructure.Persistence;
@@ -129,6 +130,43 @@ public static class InfrastructureServiceCollectionExtensions
         }
 
         services.AddSingleton<IDokployClientFactory, DokployClientFactory>();
+
+        services.AddHttpClient(GitHubAppClient.HttpClientName, client =>
+            {
+                client.BaseAddress = new Uri("https://api.github.com/");
+                client.DefaultRequestHeaders.Accept.Add(
+                    new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Trimango-Dokploy-Monitor");
+                client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
+            })
+            .AddStandardResilienceHandler(o =>
+            {
+                o.AttemptTimeout.Timeout = TimeSpan.FromSeconds(30);
+                o.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(90);
+                o.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+                o.Retry.MaxRetryAttempts = 2;
+                o.Retry.ShouldHandle = args =>
+                {
+                    if (args.Outcome.Result is { } response)
+                    {
+                        if (response.RequestMessage?.Method is { } method
+                            && method != HttpMethod.Get
+                            && method != HttpMethod.Head)
+                        {
+                            return ValueTask.FromResult(false);
+                        }
+
+                        return ValueTask.FromResult(
+                            (int)response.StatusCode >= 500
+                            || response.StatusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests);
+                    }
+
+                    return ValueTask.FromResult(
+                        args.Outcome.Exception is HttpRequestException or TimeoutRejectedException);
+                };
+            });
+
+        services.AddSingleton<IGitHubAppClient, GitHubAppClient>();
 
         var connectionString = configuration.GetConnectionString("Default");
         if (string.IsNullOrWhiteSpace(connectionString))

@@ -414,6 +414,14 @@ public static class TranslationDefaults
         "info",
         "warning",
         "success",
+        "Suggest",
+        "Suggest a strong password",
+        "Weak",
+        "Medium",
+        "Strong",
+        "Password strength",
+        "Show password",
+        "Hide password",
     ];
 
     /// <summary>Culture code -> values in the same order as <see cref="Keys"/>.</summary>
@@ -819,6 +827,14 @@ public static class TranslationDefaults
             "bilgi",
             "uyari",
             "basarili",
+            "Öner",
+            "Güçlü bir parola öner",
+            "Zayıf",
+            "Orta",
+            "Güçlü",
+            "Parola gücü",
+            "Parolayı göster",
+            "Parolayı gizle",
         ],
         ["de"] =
         [
@@ -1220,6 +1236,14 @@ public static class TranslationDefaults
             "Info",
             "Warnung",
             "Erfolg",
+            "Vorschlagen",
+            "Starkes Passwort vorschlagen",
+            "Schwach",
+            "Mittel",
+            "Stark",
+            "Passwortstärke",
+            "Passwort anzeigen",
+            "Passwort verbergen",
         ],
         ["fr"] =
         [
@@ -1621,6 +1645,14 @@ public static class TranslationDefaults
             "info",
             "avert.",
             "succes",
+            "Suggérer",
+            "Suggérer un mot de passe fort",
+            "Faible",
+            "Moyen",
+            "Fort",
+            "Force du mot de passe",
+            "Afficher le mot de passe",
+            "Masquer le mot de passe",
         ],
         ["es"] =
         [
@@ -2022,6 +2054,14 @@ public static class TranslationDefaults
             "info",
             "aviso",
             "exito",
+            "Sugerir",
+            "Sugerir una contraseña segura",
+            "Débil",
+            "Media",
+            "Fuerte",
+            "Seguridad de la contraseña",
+            "Mostrar contraseña",
+            "Ocultar contraseña",
         ],
         ["pt"] =
         [
@@ -2423,6 +2463,14 @@ public static class TranslationDefaults
             "info",
             "aviso",
             "sucesso",
+            "Sugerir",
+            "Sugerir uma senha forte",
+            "Fraca",
+            "Média",
+            "Forte",
+            "Força da senha",
+            "Mostrar senha",
+            "Ocultar senha",
         ],
         ["it"] =
         [
@@ -2824,6 +2872,14 @@ public static class TranslationDefaults
             "info",
             "avviso",
             "successo",
+            "Suggerisci",
+            "Suggerisci una password sicura",
+            "Debole",
+            "Media",
+            "Forte",
+            "Sicurezza password",
+            "Mostra password",
+            "Nascondi password",
         ],
         ["nl"] =
         [
@@ -3225,6 +3281,14 @@ public static class TranslationDefaults
             "info",
             "waarsch.",
             "gelukt",
+            "Voorstellen",
+            "Sterk wachtwoord voorstellen",
+            "Zwak",
+            "Gemiddeld",
+            "Sterk",
+            "Wachtwoordsterkte",
+            "Wachtwoord tonen",
+            "Wachtwoord verbergen",
         ],
         ["pl"] =
         [
@@ -3626,6 +3690,14 @@ public static class TranslationDefaults
             "info",
             "ostrzez.",
             "sukces",
+            "Zaproponuj",
+            "Zaproponuj silne hasło",
+            "Słabe",
+            "Średnie",
+            "Silne",
+            "Siła hasła",
+            "Pokaż hasło",
+            "Ukryj hasło",
         ],
         ["ru"] =
         [
@@ -4027,6 +4099,14 @@ public static class TranslationDefaults
             "инфо",
             "предупр.",
             "успех",
+            "Предложить",
+            "Предложить надёжный пароль",
+            "Слабый",
+            "Средний",
+            "Надёжный",
+            "Надёжность пароля",
+            "Показать пароль",
+            "Скрыть пароль",
         ],
         ["uk"] =
         [
@@ -4428,6 +4508,14 @@ public static class TranslationDefaults
             "інфо",
             "попередж.",
             "успіх",
+            "Запропонувати",
+            "Запропонувати надійний пароль",
+            "Слабкий",
+            "Середній",
+            "Надійний",
+            "Надійність пароля",
+            "Показати пароль",
+            "Сховати пароль",
         ],
         ["ar"] =
         [
@@ -4829,6 +4917,14 @@ public static class TranslationDefaults
             "معلومة",
             "تحذير",
             "نجاح",
+            "اقتراح",
+            "اقتراح كلمة مرور قوية",
+            "ضعيف",
+            "متوسط",
+            "قوي",
+            "قوة كلمة المرور",
+            "إظهار كلمة المرور",
+            "إخفاء كلمة المرور",
         ],
         ["zh"] =
         [
@@ -5230,6 +5326,14 @@ public static class TranslationDefaults
             "信息",
             "警告",
             "成功",
+            "建议",
+            "建议强密码",
+            "弱",
+            "中",
+            "强",
+            "密码强度",
+            "显示密码",
+            "隐藏密码",
         ],
         ["ja"] =
         [
@@ -5631,6 +5735,14 @@ public static class TranslationDefaults
             "情報",
             "警告",
             "成功",
+            "提案",
+            "強力なパスワードを提案",
+            "弱い",
+            "普通",
+            "強い",
+            "パスワード強度",
+            "パスワードを表示",
+            "パスワードを隠す",
         ],
         ["ko"] =
         [
@@ -6032,6 +6144,14 @@ public static class TranslationDefaults
             "정보",
             "경고",
             "성공",
+            "제안",
+            "강력한 비밀번호 제안",
+            "약함",
+            "보통",
+            "강함",
+            "비밀번호 강도",
+            "비밀번호 표시",
+            "비밀번호 숨기기",
         ],
         ["hi"] =
         [
@@ -6433,6 +6553,14 @@ public static class TranslationDefaults
             "सूचना",
             "चेतावनी",
             "सफल",
+            "सुझाएँ",
+            "मज़बूत पासवर्ड सुझाएँ",
+            "कमज़ोर",
+            "मध्यम",
+            "मज़बूत",
+            "पासवर्ड क्षमता",
+            "पासवर्ड दिखाएँ",
+            "पासवर्ड छिपाएँ",
         ],
         ["id"] =
         [
@@ -6834,6 +6962,14 @@ public static class TranslationDefaults
             "info",
             "peringatan",
             "sukses",
+            "Sarankan",
+            "Sarankan kata sandi kuat",
+            "Lemah",
+            "Sedang",
+            "Kuat",
+            "Kekuatan kata sandi",
+            "Tampilkan kata sandi",
+            "Sembunyikan kata sandi",
         ],
     };
 

@@ -1,5 +1,5 @@
 /**
- * Parola onerisi + guc gostergesi (ChangeCredentials vb.).
+ * Parola onerisi, goster/gizle ve guc gostergesi (ChangeCredentials vb.).
  * Kural: buyuk harf + kucuk harf + rakam; uzunluk data-min-length'ten.
  */
 (() => {
@@ -34,7 +34,6 @@
     function generatePassword(minLength) {
         const length = Math.max(minLength, 16);
         const random = secureRandomInt;
-        // En az birer zorunlu karakter, kalan karisik (sembol dahil → guclu).
         let password =
             pick(uppers, 1, random) +
             pick(lowers, 1, random) +
@@ -44,9 +43,7 @@
         return shuffle(password, random);
     }
 
-    /**
-     * 0 = bos, 1 = zayif, 2 = orta, 3 = guclu
-     */
+    /** 0 = bos, 1 = zayif, 2 = orta, 3 = guclu */
     function scorePassword(value, minLength) {
         if (!value) {
             return 0;
@@ -64,7 +61,37 @@
         return 3;
     }
 
-    function bind(root) {
+    function toggleLabels(form) {
+        return {
+            show: (form && form.dataset.labelShow) || "Show password",
+            hide: (form && form.dataset.labelHide) || "Hide password",
+        };
+    }
+
+    function setVisible(input, button, visible, labels) {
+        input.type = visible ? "text" : "password";
+        const text = visible ? labels.hide : labels.show;
+        button.textContent = text;
+        button.title = text;
+        button.setAttribute("aria-label", text);
+        button.setAttribute("aria-pressed", visible ? "true" : "false");
+    }
+
+    function bindToggle(button) {
+        const group = button.closest(".input-group") || button.parentElement;
+        const input = group && group.querySelector("[data-password-toggle-target]");
+        if (!input) return;
+
+        const form = button.closest("form");
+        const labels = toggleLabels(form);
+
+        button.addEventListener("click", () => {
+            const visible = input.type === "password";
+            setVisible(input, button, visible, labels);
+        });
+    }
+
+    function bindStrength(root) {
         const password = root.querySelector("[data-password-input]");
         const form = root.closest("form") || root;
         const confirm = form.querySelector("[data-password-confirm]");
@@ -72,8 +99,9 @@
         const meter = root.querySelector("[data-password-meter]");
         const label = root.querySelector("[data-password-strength-label]");
         const minLength = Number(root.dataset.minLength || "8");
+        const labels = toggleLabels(form);
 
-        const labels = {
+        const strengthLabels = {
             0: "",
             1: root.dataset.labelWeak || "Weak",
             2: root.dataset.labelMedium || "Medium",
@@ -105,25 +133,48 @@
                 });
             }
             if (label) {
-                label.textContent = labels[level] || "";
+                label.textContent = strengthLabels[level] || "";
                 label.className = "password-strength-label small " + (classes[level] || "text-secondary");
             }
+        }
+
+        function reveal(input) {
+            if (!input) return;
+            const group = input.closest(".input-group");
+            const toggle = group && group.querySelector("[data-password-toggle]");
+            if (toggle) {
+                setVisible(input, toggle, true, labels);
+            } else {
+                input.type = "text";
+            }
+        }
+
+        function hideLater(input) {
+            if (!input) return;
+            window.setTimeout(() => {
+                const group = input.closest(".input-group");
+                const toggle = group && group.querySelector("[data-password-toggle]");
+                if (toggle) {
+                    setVisible(input, toggle, false, labels);
+                } else {
+                    input.type = "password";
+                }
+            }, 2500);
         }
 
         if (suggest && password) {
             suggest.addEventListener("click", () => {
                 const generated = generatePassword(minLength);
                 password.value = generated;
-                password.type = "text";
                 if (confirm) {
                     confirm.value = generated;
                 }
+                reveal(password);
+                reveal(confirm);
                 password.dispatchEvent(new Event("input", { bubbles: true }));
                 refresh();
-                // Kisa sure goster, sonra tekrar gizle.
-                window.setTimeout(() => {
-                    password.type = "password";
-                }, 2500);
+                hideLater(password);
+                hideLater(confirm);
             });
         }
 
@@ -133,5 +184,6 @@
         }
     }
 
-    document.querySelectorAll("[data-password-field]").forEach(bind);
+    document.querySelectorAll("[data-password-toggle]").forEach(bindToggle);
+    document.querySelectorAll("[data-password-field]").forEach(bindStrength);
 })();
